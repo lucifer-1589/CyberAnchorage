@@ -1,4 +1,5 @@
 import { create } from "zustand";
+import { applyEffects, detectPerfTier, hintTier, type Effects, type EffectsPref, type Tier } from "@/lib/perf";
 
 type Theme = "dark" | "light";
 
@@ -23,6 +24,12 @@ interface UiState {
   mobileNavOpen: boolean;
   paletteOpen: boolean;
   liveConnected: boolean;
+  /** Settings › Visual effects (persisted) and what it resolves to on this device. */
+  effectsPref: EffectsPref;
+  tier: Tier;
+  tierMeasured: boolean;
+  effects: Effects;
+  setEffectsPref: (p: EffectsPref) => void;
   setTheme: (t: Theme) => void;
   toggleTheme: () => void;
   toggleSidebar: () => void;
@@ -32,6 +39,10 @@ interface UiState {
 }
 
 const initialTheme: Theme = read("ca-theme") === "light" ? "light" : "dark";
+const storedFx = read("ca-effects");
+const initialPref: EffectsPref = storedFx === "full" || storedFx === "reduced" || storedFx === "off" ? storedFx : "auto";
+const initialTier = hintTier();
+const initialEffects = typeof document !== "undefined" ? applyEffects(initialPref, initialTier) : "full";
 
 export const useUi = create<UiState>((set, get) => ({
   theme: initialTheme,
@@ -39,6 +50,14 @@ export const useUi = create<UiState>((set, get) => ({
   mobileNavOpen: false,
   paletteOpen: false,
   liveConnected: false,
+  effectsPref: initialPref,
+  tier: initialTier,
+  tierMeasured: false,
+  effects: initialEffects,
+  setEffectsPref: (effectsPref) => {
+    write("ca-effects", effectsPref);
+    set({ effectsPref, effects: applyEffects(effectsPref, get().tier) });
+  },
   setTheme: (theme) => {
     document.documentElement.dataset.theme = theme;
     write("ca-theme", theme);
@@ -54,3 +73,14 @@ export const useUi = create<UiState>((set, get) => ({
   setPalette: (paletteOpen) => set({ paletteOpen }),
   setLive: (liveConnected) => set({ liveConnected }),
 }));
+
+/** Refine the tier by measuring 60 frames once the page has loaded (Auto follows it). */
+export function startPerfProbe(): void {
+  const run = () =>
+    detectPerfTier().then((tier) => {
+      const s = useUi.getState();
+      useUi.setState({ tier, tierMeasured: true, effects: applyEffects(s.effectsPref, tier) });
+    });
+  if (document.readyState === "complete") run();
+  else window.addEventListener("load", run, { once: true });
+}
