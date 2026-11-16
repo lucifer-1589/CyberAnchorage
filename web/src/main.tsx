@@ -3,7 +3,7 @@ import ReactDOM from "react-dom/client";
 import { BrowserRouter } from "react-router-dom";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "sonner";
-import { App } from "@/App";
+import { App, preloadRoute } from "@/App";
 import { ApiError } from "@/lib/api";
 import { TooltipProvider } from "@/components/ui/overlays";
 import { startPerfProbe, useUi } from "@/store/ui";
@@ -12,6 +12,7 @@ import "@/styles/globals.css";
 
 document.documentElement.dataset.theme = useUi.getState().theme;
 startPerfProbe();
+preloadRoute(location.pathname);
 
 /** Dev-only perf overlay (`?perf=1`): tree-shaken out of production builds. */
 const PerfOverlay = import.meta.env.DEV ? lazy(() => import("@/components/PerfOverlay").then((m) => ({ default: m.PerfOverlay }))) : null;

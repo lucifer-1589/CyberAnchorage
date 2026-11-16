@@ -49,14 +49,14 @@ export function IocValue({ id, value, className, actions = true }: { id: number;
       {actions && (
         <span className="inline-flex shrink-0 items-center opacity-70 transition group-hover:opacity-100">
           <Tip content="Copy defanged">
-            <button className="rounded p-1 text-fg-subtle hover:text-fg" onClick={(e) => (e.stopPropagation(), copy(false))} aria-label="Copy defanged value">
+            <button className="grid size-6 place-items-center rounded text-fg-subtle hover:text-fg" onClick={(e) => (e.stopPropagation(), copy(false))} aria-label="Copy defanged value">
               <Copy className="size-3.5" />
             </button>
           </Tip>
           {canReveal && (
             <Tip content={raw ? "Hide live value" : "Reveal live value (audited)"}>
               <button
-                className="rounded p-1 text-fg-subtle hover:text-fg disabled:opacity-50"
+                className="grid size-6 place-items-center rounded text-fg-subtle hover:text-fg disabled:opacity-50"
                 disabled={busy}
                 onClick={(e) => {
                   e.stopPropagation();
@@ -71,7 +71,7 @@ export function IocValue({ id, value, className, actions = true }: { id: number;
           )}
           {canReveal && raw && (
             <Tip content="Copy live value">
-              <button className="rounded p-1 text-danger-text hover:opacity-80" onClick={(e) => (e.stopPropagation(), copy(true))} aria-label="Copy live value">
+              <button className="grid size-6 place-items-center rounded text-danger-text hover:opacity-80" onClick={(e) => (e.stopPropagation(), copy(true))} aria-label="Copy live value">
                 <Copy className="size-3.5" />
               </button>
             </Tip>

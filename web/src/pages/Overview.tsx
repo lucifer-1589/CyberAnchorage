@@ -135,8 +135,8 @@ export default function OverviewPage() {
   const sevs = sortBy(data?.by_severity, SEV_ORDER);
   const jobs = data?.sync.worker?.jobs ?? {};
   const last = data?.sync.last_run;
-  const ingested = data?.timeline.slice(-14).map((d) => d.ingested);
-  const flagged = data?.timeline.slice(-14).map((d) => d.flagged);
+  const ingested = data?.timeline.slice(-14).map((d) => d.ingested) ?? [];
+  const flagged = data?.timeline.slice(-14).map((d) => d.flagged) ?? [];
 
   return (
     <div>
@@ -236,7 +236,7 @@ export default function OverviewPage() {
                 {!Object.keys(jobs).length && <p className="rounded-lg border border-highlight/40 bg-highlight/10 px-3 py-2 text-[12.5px] text-highlight-ink">Worker has not reported in yet — scheduled runs are not visible.</p>}
                 <div className="pt-1">
                   <div className="mb-1.5 text-xs text-fg-subtle">Recent runs</div>
-                  <div className="flex gap-1" aria-label="Recent run outcomes">
+                  <div role="group" className="flex gap-1" aria-label="Recent run outcomes">
                     {(data?.sync.recent ?? []).slice().reverse().map((r) => (
                       <Tip key={r.id} content={`#${r.id} ${r.kind} · ${r.status} · ${r.new} new / ${r.updated} updated`}>
                         <span

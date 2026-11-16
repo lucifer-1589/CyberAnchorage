@@ -25,8 +25,9 @@ export function SeverityBadge({ severity, compact, pulse }: { severity: Severity
   const level = SEV_LEVEL[severity];
   return (
     <span
-      className={cn("inline-flex items-center gap-1.5 rounded-md border px-1.5 py-0.5 text-[11.5px] font-semibold capitalize text-fg", SEV_BORDER[severity])}
+      role="img"
       aria-label={`Severity ${severity}`}
+      className={cn("inline-flex items-center gap-1.5 rounded-md border px-1.5 py-0.5 text-[11.5px] font-semibold capitalize text-fg", SEV_BORDER[severity])}
     >
       {pulse ? (
         <span className={cn("relative size-2 rounded-full", SEV_COLOR[severity])} aria-hidden>

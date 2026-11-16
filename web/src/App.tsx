@@ -8,17 +8,39 @@ import { AppShell } from "@/components/AppShell";
 import { EmptyState, Skeleton } from "@/components/ui/primitives";
 import { LoginPage } from "@/pages/Login";
 
-const Overview = lazy(() => import("@/pages/Overview"));
-const IocExplorer = lazy(() => import("@/pages/IocExplorer"));
-const SyncPage = lazy(() => import("@/pages/Sync"));
-const RulesPage = lazy(() => import("@/pages/Rules"));
-const RuleEditor = lazy(() => import("@/pages/RuleEditor"));
-const FlagsPage = lazy(() => import("@/pages/Flags"));
-const AllowlistPage = lazy(() => import("@/pages/Allowlist"));
-const DetectionsPage = lazy(() => import("@/pages/Detections"));
-const AuditPage = lazy(() => import("@/pages/Audit"));
-const UsersPage = lazy(() => import("@/pages/Users"));
-const SettingsPage = lazy(() => import("@/pages/Settings"));
+/* Route chunks: each loader is shared by React.lazy and by preloadRoute(), which main.tsx calls at boot so
+ * the current page's chunk downloads in parallel with the session refresh instead of after it. */
+const load = {
+  overview: () => import("@/pages/Overview"),
+  iocs: () => import("@/pages/IocExplorer"),
+  sync: () => import("@/pages/Sync"),
+  rules: () => import("@/pages/Rules"),
+  ruleEditor: () => import("@/pages/RuleEditor"),
+  flags: () => import("@/pages/Flags"),
+  allowlist: () => import("@/pages/Allowlist"),
+  detections: () => import("@/pages/Detections"),
+  audit: () => import("@/pages/Audit"),
+  users: () => import("@/pages/Users"),
+  settings: () => import("@/pages/Settings"),
+};
+const Overview = lazy(load.overview);
+const IocExplorer = lazy(load.iocs);
+const SyncPage = lazy(load.sync);
+const RulesPage = lazy(load.rules);
+const RuleEditor = lazy(load.ruleEditor);
+const FlagsPage = lazy(load.flags);
+const AllowlistPage = lazy(load.allowlist);
+const DetectionsPage = lazy(load.detections);
+const AuditPage = lazy(load.audit);
+const UsersPage = lazy(load.users);
+const SettingsPage = lazy(load.settings);
+
+export function preloadRoute(pathname: string): void {
+  const first = pathname.split("/")[1] ?? "";
+  const key = ({ "": "overview", iocs: "iocs", sync: "sync", flags: "flags", allowlist: "allowlist", detections: "detections", audit: "audit", users: "users", settings: "settings" } as const)[first as ""];
+  if (first === "rules") void (pathname.split("/")[2] ? load.ruleEditor() : load.rules());
+  else if (key) void load[key]();
+}
 /** Dev-only component gallery; also built when VITE_UI_KIT=1 (screenshot runs). Absent from production. */
 const DevUiKit = import.meta.env.DEV || import.meta.env.VITE_UI_KIT === "1" ? lazy(() => import("@/pages/DevUiKit")) : null;
 

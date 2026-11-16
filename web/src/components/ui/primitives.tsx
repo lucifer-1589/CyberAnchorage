@@ -279,7 +279,11 @@ export function Stat({
       <div className="mt-1.5 min-w-0">
         <div className="min-w-0">
           {loading ? (
-            <Skeleton className="mt-1 h-7 w-24" />
+            // reserve the loaded geometry exactly: value line (32 px) + hint/delta line (16 px + 2 px)
+            <>
+              <Skeleton className="my-1 h-6 w-24" />
+              <Skeleton className="mt-1.5 h-3 w-28" />
+            </>
           ) : numeric ? (
             <p className="m-0 text-kpi tabular-nums text-fg">
               <span ref={ref} aria-hidden>
@@ -302,7 +306,8 @@ export function Stat({
           )}
         </div>
       </div>
-      {spark && !loading && <Sparkline data={spark} label={`${label} trend`} className="mt-2 h-7" />}
+      {/* a spark slot (even an empty array while loading) always reserves its 28 px so nothing shifts */}
+      {spark && (spark.length > 1 && !loading ? <Sparkline data={spark} label={`${label} trend`} className="mt-2 h-7" /> : <div className="mt-2 h-7" aria-hidden />)}
     </Comp>
   );
 }

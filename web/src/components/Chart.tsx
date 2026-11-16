@@ -74,7 +74,9 @@ export function Chart({
   useEffect(() => {
     let disposed = false;
     let ro: ResizeObserver | undefined;
-    loadEcharts().then(({ echarts }) => {
+    // init when the main thread is idle: chart setup is the biggest task on a cold Overview load
+    const idle = (fn: () => void) => (typeof window.requestIdleCallback === "function" ? window.requestIdleCallback(fn, { timeout: 600 }) : globalThis.setTimeout(fn, 1));
+    loadEcharts().then(({ echarts }) => new Promise<typeof echarts>((r) => idle(() => r(echarts)))).then((echarts) => {
       if (disposed || !ref.current) return;
       const chart = echarts.init(ref.current, undefined, { renderer: "svg" });
       chartRef.current = chart;

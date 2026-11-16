@@ -1,8 +1,9 @@
-import { useEffect, useLayoutEffect, useRef, type ReactNode } from "react";
+import { lazy, Suspense, useEffect, useLayoutEffect, useRef, useState, type ReactNode } from "react";
 import { NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import {
   Anchor,
+  FlaskConical,
   LogOut,
   Menu,
   Moon,
@@ -21,9 +22,11 @@ import { useAuth } from "@/store/auth";
 import { useUi } from "@/store/ui";
 import { Button, Kbd } from "@/components/ui/primitives";
 import { Dropdown, DropdownContent, DropdownItem, DropdownLabel, DropdownSeparator, DropdownTrigger, Sheet, SheetContent, Tip } from "@/components/ui/overlays";
-import { CommandPalette } from "@/components/CommandPalette";
 import { NAV } from "@/components/nav";
-import { DemoBadge } from "@/components/badges";
+
+/** Command palette (cmdk) is lazy: it mounts on first ⌘K / search click; hover or focus on the search box preloads it. */
+const loadPalette = () => import("@/components/CommandPalette");
+const CommandPalette = lazy(() => loadPalette().then((m) => ({ default: m.CommandPalette })));
 
 function Brand({ collapsed }: { collapsed?: boolean }) {
   return (
@@ -123,8 +126,10 @@ function TopBar() {
       </Button>
       <button
         onClick={() => setPalette(true)}
+        onPointerEnter={() => void loadPalette()}
+        onFocus={() => void loadPalette()}
         className="flex h-[34px] min-w-0 flex-1 items-center gap-2 rounded-[10px] border border-control-border/70 bg-control/70 px-3 text-left text-sm text-fg-subtle transition-colors duration-1 hover:text-fg-muted sm:max-w-md"
-        aria-label="Search IOCs, rules and pages (Ctrl+K)"
+        aria-keyshortcuts="Control+K Meta+K"
       >
         <Search className="size-4 shrink-0" aria-hidden />
         <span className="truncate">Search IOCs, rules, pages…</span>
@@ -134,6 +139,7 @@ function TopBar() {
         </span>
       </button>
       <div className="ml-auto flex items-center gap-1.5">
+        <DemoChip />
         <LiveDot />
         <Tip content={theme === "dark" ? "Switch to light theme" : "Switch to dark theme"}>
           <Button variant="ghost" size="icon" onClick={() => withViewTransition(toggleTheme)} aria-label="Toggle theme">
@@ -142,7 +148,7 @@ function TopBar() {
         </Tip>
         <Dropdown>
           <DropdownTrigger asChild>
-            <button className="flex items-center gap-2 rounded-xl px-1.5 py-1 hover:bg-[rgb(var(--hover)/var(--hover-a))]" aria-label="Account menu">
+            <button className="flex items-center gap-2 rounded-xl px-1.5 py-1 hover:bg-[rgb(var(--hover)/var(--hover-a))]">
               <span className="grid size-8 place-items-center rounded-full bg-secondary/25 text-[13px] font-semibold uppercase text-fg">
                 {(user?.name || user?.email || "?").slice(0, 1)}
               </span>
@@ -150,6 +156,7 @@ function TopBar() {
                 <span className="block max-w-[160px] truncate text-[13px] font-medium text-fg">{user?.name || user?.email}</span>
                 <span className="block text-[11px] capitalize text-fg-subtle">{user?.role}</span>
               </span>
+              <span className="sr-only">, account menu</span>
             </button>
           </DropdownTrigger>
           <DropdownContent align="end">
@@ -168,7 +175,9 @@ function TopBar() {
   );
 }
 
-function DemoBanner() {
+/** Demo-data notice lives in the fixed-height header (no layout shift when /stats/overview arrives).
+ *  The same query also warms the Overview's data while its route chunk loads. */
+function DemoChip() {
   const { data } = useQuery({
     queryKey: ["overview"],
     queryFn: () => api<any>("/stats/overview"),
@@ -177,12 +186,15 @@ function DemoBanner() {
   const demo = data?.totals?.demo ?? 0;
   if (!demo) return null;
   return (
-    <div className="mx-2 mt-2 flex flex-wrap items-center gap-2 rounded-xl border border-highlight/30 bg-highlight-soft/[.08] px-3 py-1.5 text-[12.5px] text-fg-muted">
-      <DemoBadge />
-      <span>
-        <strong className="font-semibold text-fg">{fmtNum(demo)}</strong> IOCs come from the synthetic demo fixture. They are marked with this badge everywhere.
+    <Tip content={`${fmtNum(demo)} IOCs come from the synthetic demo fixture (make seed-demo). They carry the DEMO badge everywhere.`}>
+      <span tabIndex={0} role="note" aria-label={`Demo data: ${fmtNum(demo)} synthetic IOCs`} className="inline-flex items-center gap-1.5 rounded-full border border-highlight/40 bg-highlight-soft/[.08] p-0.5 text-[11.5px] font-medium text-fg-muted md:pr-2">
+        <span className="inline-flex items-center gap-1 rounded-full bg-highlight-soft/90 px-1.5 py-0.5 text-[10.5px] font-bold uppercase tracking-wide text-[#5b4300]">
+          <FlaskConical className="size-3" aria-hidden />
+          <span className="hidden sm:inline">Demo data</span>
+        </span>
+        <span className="hidden tabular-nums md:inline">{fmtNum(demo)}</span>
       </span>
-    </div>
+    </Tip>
   );
 }
 
@@ -200,8 +212,12 @@ function RouteView({ children }: { children?: ReactNode }) {
 
 export function AppShell({ children }: { children?: ReactNode }) {
   useLiveConnection();
-  const { sidebarCollapsed, mobileNavOpen, setMobileNav, setPalette } = useUi();
+  const { sidebarCollapsed, mobileNavOpen, setMobileNav, setPalette, paletteOpen } = useUi();
   const location = useLocation();
+  const [paletteMounted, setPaletteMounted] = useState(false);
+  useEffect(() => {
+    if (paletteOpen) setPaletteMounted(true);
+  }, [paletteOpen]);
   const columnRef = useRef<HTMLDivElement>(null);
   const lastLeft = useRef<number | null>(null);
 
@@ -254,12 +270,15 @@ export function AppShell({ children }: { children?: ReactNode }) {
       </Sheet>
       <div ref={columnRef} className="flex min-w-0 flex-1 flex-col">
         <TopBar />
-        <DemoBanner />
         <main id="main" className="mx-auto w-full max-w-[1600px] flex-1 px-3 py-4 sm:px-5 sm:py-6">
           <RouteView>{children}</RouteView>
         </main>
       </div>
-      <CommandPalette />
+      {paletteMounted && (
+        <Suspense fallback={null}>
+          <CommandPalette />
+        </Suspense>
+      )}
     </div>
   );
 }

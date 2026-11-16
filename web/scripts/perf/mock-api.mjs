@@ -97,7 +97,8 @@ function facet(rows, key) {
   return [...m].map(([k, count]) => ({ key: String(k), count })).sort((a, b) => b.count - a.count).slice(0, 12);
 }
 
-export async function installMockApi(page, { iocCount = 100_000, liveEveryMs = 1500, role = "admin" } = {}) {
+/** Pure request handler shared by the Playwright route mock and the standalone HTTP server (serve.mjs). */
+export function createMock({ iocCount = 100_000, role = "admin" } = {}) {
   const IOCS = makeIocs(iocCount);
   const byId = new Map(IOCS.map((i) => [i.id, i]));
   const user = { id: 1, email: "analyst@cyberanchorage.test", name: "Ada Analyst", role, is_active: true };
@@ -116,13 +117,13 @@ export async function installMockApi(page, { iocCount = 100_000, liveEveryMs = 1
     timeline: Array.from({ length: 30 }, (_, d) => ({ date: iso(NOW - (29 - d) * DAY).slice(0, 10), ingested: 900 + Math.round(400 * Math.sin(d / 3) + d * 18), flagged: 120 + Math.round(60 * Math.cos(d / 4) + d * 4) })),
     sync: { last_run: runs[0], last_success_at: runs[0].finished_at, recent: runs.slice(0, 12), worker: { heartbeat_at: iso(NOW), jobs: { incremental: { name: "incremental", next_run_at: iso(NOW + 3600_000) }, reconcile: { name: "reconcile", next_run_at: iso(NOW + 19 * 3600_000) } } } },
   };
-  const json = (route, body, status = 200) => route.fulfill({ status, contentType: "application/json", body: JSON.stringify(body) });
+  const json = (_route, body, status = 200) => ({ status, body });
 
-  await page.route("**/api/**", async (route) => {
-    const url = new URL(route.request().url());
+  function handle(method, href, postData) {
+    const route = null;
+    const url = new URL(href, "http://mock");
     const p = url.pathname.replace(/^\/api/, "");
     const q = url.searchParams;
-    const method = route.request().method();
     if (p === "/auth/refresh" || p === "/auth/login") return json(route, { access_token: "mock-token", user });
     if (p === "/stats/overview") return json(route, overview);
     if (p === "/iocs") {
@@ -146,7 +147,7 @@ export async function installMockApi(page, { iocCount = 100_000, liveEveryMs = 1
     if (p === "/rules") return json(route, RULES);
     if ((m = p.match(/^\/rules\/(\d+)$/))) return json(route, RULES[Number(m[1]) - 1]);
     if ((m = p.match(/^\/rules\/(\d+)\/versions$/))) return json(route, [3, 2, 1].map((v) => ({ version: v, snapshot: {}, changed_by_email: user.email, change_note: v === 3 ? "tighten source_count" : "", changed_at: iso(NOW - v * DAY) })));
-    if ((m = p.match(/^\/rules\/(\d+)\/toggle$/))) return json(route, { ...RULES[Number(m[1]) - 1], enabled: JSON.parse(route.request().postData() ?? "{}").enabled });
+    if ((m = p.match(/^\/rules\/(\d+)\/toggle$/))) return json(route, { ...RULES[Number(m[1]) - 1], enabled: JSON.parse(postData ?? "{}").enabled });
     if (p === "/rules/dry-run") return json(route, { count: 1240, allowlisted: 18, samples: IOCS.filter((i) => i.score > 0.85).slice(0, 8) }); // DryRunOut
     if (p === "/sync/status") return json(route, {
       sources: SOURCES.map((s, i) => ({ source: s, store: `${s}.db`, path: `darkweb_intel/${s}.db`, ok: i !== 3, detail: i === 3 ? "snapshot older than 26 h" : "ok", rows: 25000 + i * 3100, size_bytes: (40 + i * 12) * 1e6, modified_at: iso(NOW - i * 3600_000), is_demo: false })),
@@ -162,6 +163,16 @@ export async function installMockApi(page, { iocCount = 100_000, liveEveryMs = 1
     if (p === "/users") return json(route, [user]);
     if (p === "/settings") return json(route, { allow_private_ips: false, default_tlp: "AMBER", expiry_days: { ipv4: 30, ipv6: 30, cidr: 90, domain: 90, url: 60, "ip:port": 30, onion: 180, asn: 365, ja3: 180, ja3s: 180 }, enabled_types: ["ipv4", "ipv6", "cidr", "domain", "url", "ip:port", "onion", "asn", "ja3", "ja3s"], regex_timeout_ms: 50, retro_statement_timeout_ms: 30000 });
     return json(route, {});
+  }
+  return { handle, iocs: IOCS, user };
+}
+
+export async function installMockApi(page, { iocCount = 100_000, liveEveryMs = 1500, role = "admin" } = {}) {
+  const mock = createMock({ iocCount, role });
+  await page.route("**/api/**", (route) => {
+    const req = route.request();
+    const { status, body } = mock.handle(req.method(), req.url(), req.postData());
+    return route.fulfill({ status, contentType: "application/json", body: JSON.stringify(body) });
   });
 
   // Live events: a steady trickle so the batcher and live dot are exercised.
@@ -176,5 +187,5 @@ export async function installMockApi(page, { iocCount = 100_000, liveEveryMs = 1
     t.unref?.(); // never keep the Node process alive after the browser closes
     ws.onClose(() => clearInterval(t));
   });
-  return { iocs: IOCS, user };
+  return mock;
 }
