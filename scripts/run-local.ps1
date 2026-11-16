@@ -65,11 +65,30 @@ if (-not (Test-Path $EnvFile)) {
     Write-Host ""
 }
 
-# 3. Web UI (pre-built) -----------------------------------------------------------------------------
-if (-not (Test-Path (Join-Path $Dist "index.html"))) {
+# 3. Web UI (built once, rebuilt when the frontend source changes, e.g. after git pull) ------------
+$Web = Join-Path $Root "web"
+$built = Join-Path $Dist "index.html"
+$stale = $false
+if (Test-Path $built) {
+    $builtAt = (Get-Item $built).LastWriteTimeUtc
+    $sources = @(Get-ChildItem (Join-Path $Web "src") -Recurse -File) +
+        @(Get-Item (Join-Path $Web "index.html"), (Join-Path $Web "package.json"), (Join-Path $Web "vite.config.ts"), (Join-Path $Web "tailwind.config.ts"))
+    $stale = [bool]($sources | Where-Object { $_.LastWriteTimeUtc -gt $builtAt } | Select-Object -First 1)
+}
+if (-not (Test-Path $built) -or $stale) {
     if (Get-Command npm -ErrorAction SilentlyContinue) {
-        Step "Building the web UI"
-        Push-Location (Join-Path $Root "web"); npm ci --no-audit --no-fund; npm run build; Pop-Location
+        Step $(if ($stale) { "Frontend changed since the last build - rebuilding the web UI" } else { "Building the web UI (first run only)" })
+        Push-Location $Web
+        try {
+            if (-not (Test-Path "node_modules") -or ((Get-Item "package-lock.json").LastWriteTimeUtc -gt (Get-Item "node_modules").LastWriteTimeUtc)) {
+                npm ci --no-audit --no-fund
+                if ($LASTEXITCODE -ne 0) { throw "npm ci failed" }
+            }
+            npm run build
+            if ($LASTEXITCODE -ne 0) { throw "web UI build failed" }
+        } finally { Pop-Location }
+    } elseif ($stale) {
+        Write-Warning "The frontend source is newer than web\dist but Node.js is not installed; serving the previous build. Install Node 20 LTS from https://nodejs.org to get the latest UI."
     } else {
         throw "web\dist is missing and Node.js is not installed. Install Node 20 LTS from https://nodejs.org and re-run."
     }

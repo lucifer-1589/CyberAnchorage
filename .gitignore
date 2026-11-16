@@ -9,6 +9,7 @@ __pycache__/
 node_modules/
 web/dist/
 web/coverage/
+*.tsbuildinfo
 data/
 *.db
 *.db-wal

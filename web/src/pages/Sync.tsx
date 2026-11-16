@@ -173,7 +173,7 @@ export default function SyncPage() {
                       </td>
                       <td className="mono px-3 py-2 text-fg-muted">{s.path}</td>
                       <td className="px-3 py-2 text-right tabular-nums text-fg">{fmtNum(s.rows)}</td>
-                      <td className="px-3 py-2 text-right tabular-nums text-fg-muted">{bytes(s.size_bytes)}</td>
+                      <td className="whitespace-nowrap px-3 py-2 text-right tabular-nums text-fg-muted">{bytes(s.size_bytes)}</td>
                       <td className="px-3 py-2 text-fg-muted">{timeAgo(s.modified_at)}</td>
                       <td className="px-3 py-2">
                         <span className={cn("inline-flex items-center gap-1.5 text-[12.5px]", s.ok ? "text-fg" : "text-danger-text")}>

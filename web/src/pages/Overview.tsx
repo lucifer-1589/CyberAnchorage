@@ -190,7 +190,7 @@ export default function OverviewPage() {
                   },
                   yAxis: { type: "value", splitLine: { lineStyle: { color: c.grid } }, axisLabel: { color: c.muted, fontSize: 11 } },
                   series: [
-                    { name: "Ingested", type: "line", smooth: 0.25, symbol: "circle", symbolSize: 8, showSymbol: false, itemStyle: { color: c.s1 }, lineStyle: { width: 2.5, color: c.brand() }, areaStyle: { opacity: 0.1, color: c.s1 }, data: data!.timeline.map((d) => d.ingested) },
+                    { name: "Ingested", type: "line", smooth: 0.25, symbol: "circle", symbolSize: 8, showSymbol: false, itemStyle: { color: c.s1 }, lineStyle: { width: 2.5, color: c.s1 }, areaStyle: { opacity: 0.1, color: c.s1 }, data: data!.timeline.map((d) => d.ingested) },
                     { name: "Flagged", type: "line", smooth: 0.25, symbol: "circle", symbolSize: 8, showSymbol: false, itemStyle: { color: c.s2 }, lineStyle: { width: 2, color: c.s2 }, data: data!.timeline.map((d) => d.flagged) },
                   ],
                 })}

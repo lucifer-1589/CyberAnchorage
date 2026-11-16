@@ -15,7 +15,7 @@ Docs: [PLAN.md](PLAN.md) (architecture, schema) · [DECISIONS.md](DECISIONS.md) 
 
 ## Run it on Windows without Docker (quickest)
 
-Needs only **Python 3.12**. Open PowerShell **in the CyberAnchorage folder** and run:
+Needs **Python 3.12** and **Node 20 LTS** (https://nodejs.org, used to build the web UI). Open PowerShell and run:
 
 ```powershell
 cd D:\Emaago_work\Integeration\CyberAnchorage
@@ -28,7 +28,8 @@ PostgreSQL 16 on `127.0.0.1:54329` (data in `data\pg`), seeds the demo data, and
 http://127.0.0.1:8077. One process runs the API, the hourly/daily scheduler and the UI. Ctrl+C stops everything.
 
 Options: `-Simulator` (labelled demo detection feed) · `-Reseed` (regenerate demo data) · `-Port 9000` · `-NoBrowser`.
-Rebuilding the UI after frontend changes needs Node 20 (`cd web; npm ci; npm run build`).
+The launcher builds the web UI on first run and rebuilds it automatically whenever the frontend source is
+newer than `web\dist` (for example after `git pull`).
 
 ## Run it (docker)
 
