@@ -62,7 +62,34 @@ def create_app(*, with_lifespan: bool = True) -> FastAPI:
     for module in (auth, users, iocs, rules, ops, detections):
         api.include_router(module.router)
     app.include_router(api)
+    if s.web_dist_dir:
+        _mount_spa(app, s.web_dist_dir)
     return app
+
+
+def _mount_spa(app: FastAPI, dist: str) -> None:
+    """Serve the built React app (web/dist) from the API — used when there is no nginx (local mode)."""
+    from pathlib import Path
+
+    from fastapi import HTTPException
+    from fastapi.responses import FileResponse
+    from fastapi.staticfiles import StaticFiles
+
+    root = Path(dist).resolve()
+    index = root / "index.html"
+    if not index.exists():
+        logging.getLogger("anchorage").warning("WEB_DIST_DIR %s has no index.html; UI not served", root)
+        return
+    app.mount("/assets", StaticFiles(directory=root / "assets"), name="assets")
+
+    @app.get("/{path:path}", include_in_schema=False)
+    async def spa(path: str) -> FileResponse:
+        if path.startswith("api/"):
+            raise HTTPException(404, "Not found")
+        candidate = (root / path).resolve()
+        if path and candidate.is_file() and root in candidate.parents:
+            return FileResponse(candidate)
+        return FileResponse(index, headers={"Cache-Control": "no-cache"})
 
 
 

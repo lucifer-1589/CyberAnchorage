@@ -53,6 +53,10 @@ class Settings(BaseSettings):
 
     login_rate_per_minute: int = 10
 
+    # Single-machine mode (scripts/run-local.ps1): serve the built SPA and run the scheduler in the API process
+    web_dist_dir: str = ""
+    embedded_worker: bool = False
+
     @field_validator("cti_source_mode")
     @classmethod
     def _mode(cls, v: str) -> str:

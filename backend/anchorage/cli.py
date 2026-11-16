@@ -65,6 +65,7 @@ def main(argv: list[str] | None = None) -> None:
     sd = sub.add_parser("seed-demo")
     sd.add_argument("--count", type=int, default=1500)
     sd.add_argument("--no-sync", action="store_true")
+    sd.add_argument("--if-empty", action="store_true", help="only seed when the database has no IOCs")
     sy = sub.add_parser("sync")
     sy.add_argument("--kind", choices=["manual", "hourly", "daily"], default="manual")
     sy.add_argument("--inline", action="store_true", help="run in this process instead of queueing")
@@ -80,7 +81,13 @@ def main(argv: list[str] | None = None) -> None:
                 await create_admin(args.email, args.password)
             elif args.cmd == "seed-demo":
                 from anchorage.demo.seed import seed_demo
+                from anchorage.models import Ioc
 
+                if args.if_empty:
+                    async with session_scope() as s:
+                        if await s.scalar(select(func.count()).select_from(Ioc)):
+                            print("seed-demo: database already has IOCs, skipping")
+                            return
                 await seed_demo(count=args.count, sync=not args.no_sync)
             elif args.cmd == "sync":
                 from anchorage.sync.service import queue_or_run

@@ -23,6 +23,13 @@ async def startup(app: FastAPI) -> None:
         app.state.tasks.extend(await start_realtime())
     except ImportError:
         pass
+    from anchorage.core.config import get_settings
+
+    if get_settings().embedded_worker:
+        from anchorage.worker import serve
+
+        app.state.tasks.append(asyncio.create_task(serve()))
+        log.info("embedded worker started (hourly + daily 07:00 UTC syncs run in this process)")
     log.info("CyberAnchorage API started")
 
 

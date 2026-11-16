@@ -67,8 +67,9 @@ async def run_queued(service: SyncService) -> None:
         await service.run(run.kind, run.triggered_by, run_id=run.id)
 
 
-async def main() -> None:
-    init_engine()
+async def serve(stop: asyncio.Event | None = None) -> None:
+    """Scheduler + queued-run loop. Used by the worker process and by the API's embedded-worker mode."""
+    stop = stop or asyncio.Event()
     stale = await fail_stale_runs()
     if stale:
         log.warning("marked %d stale running sync(s) as failed", stale)
@@ -76,7 +77,6 @@ async def main() -> None:
     sched = build_scheduler(service)
     sched.start()
     wake = asyncio.Event()
-    stop = asyncio.Event()
 
     async def listen() -> None:
         async for msg in get_bus().subscribe(CONTROL):
@@ -84,10 +84,6 @@ async def main() -> None:
                 wake.set()
 
     listener = asyncio.create_task(listen())
-    loop = asyncio.get_running_loop()
-    for sig in (signal.SIGINT, signal.SIGTERM):
-        with contextlib.suppress(NotImplementedError):  # Windows
-            loop.add_signal_handler(sig, stop.set)
     log.info("worker started; jobs: %s", [(j.id, str(j.next_run_time)) for j in sched.get_jobs()])
     try:
         while not stop.is_set():
@@ -102,6 +98,18 @@ async def main() -> None:
     finally:
         listener.cancel()
         sched.shutdown(wait=False)
+
+
+async def main() -> None:
+    init_engine()
+    stop = asyncio.Event()
+    loop = asyncio.get_running_loop()
+    for sig in (signal.SIGINT, signal.SIGTERM):
+        with contextlib.suppress(NotImplementedError):  # Windows
+            loop.add_signal_handler(sig, stop.set)
+    try:
+        await serve(stop)
+    finally:
         await dispose_engine()
 
 

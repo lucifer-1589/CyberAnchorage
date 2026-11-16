@@ -13,6 +13,23 @@ React glass console ← nginx ← FastAPI API ─────┴─ matcher inde
 
 Docs: [PLAN.md](PLAN.md) (architecture, schema) · [DECISIONS.md](DECISIONS.md) (why) · [CLAUDE.md](CLAUDE.md) (working rules).
 
+## Run it on Windows without Docker (quickest)
+
+Needs only **Python 3.12**. Open PowerShell **in the CyberAnchorage folder** and run:
+
+```powershell
+cd D:\Emaago_work\Integeration\CyberAnchorage
+powershell -ExecutionPolicy Bypass -File .\scriptsun-local.ps1
+```
+
+First run creates the Python environment (a few minutes), writes `.env` with a random JWT secret and
+admin password (printed once, also saved as `ADMIN_PASSWORD` in `.env`), starts an embedded
+PostgreSQL 16 on `127.0.0.1:54329` (data in `data\pg`), seeds the demo data, and opens
+http://127.0.0.1:8077. One process runs the API, the hourly/daily scheduler and the UI. Ctrl+C stops everything.
+
+Options: `-Simulator` (labelled demo detection feed) · `-Reseed` (regenerate demo data) · `-Port 9000` · `-NoBrowser`.
+Rebuilding the UI after frontend changes needs Node 20 (`cd web; npm ci; npm run build`).
+
 ## Run it (docker)
 
 ```bash
