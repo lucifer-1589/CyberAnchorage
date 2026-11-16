@@ -84,7 +84,7 @@ export default function SyncPage() {
       />
 
       {busy && (
-        <Panel className="mb-4 border-secondary/40 px-5 py-4" aria-live="polite">
+        <Panel className="mb-4 border-violet/40 px-5 py-4" aria-live="polite">
           <div className="flex flex-wrap items-center gap-3">
             <StatusPill status={current[0].status} />
             <span className="text-sm text-fg">
@@ -99,13 +99,13 @@ export default function SyncPage() {
             <span className="text-xs text-fg-subtle">started {timeAgo(current[0].started_at ?? current[0].queued_at)}</span>
           </div>
           <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-[rgb(var(--hover)/0.1)]">
-            <div className="h-full w-1/3 animate-[shimmer_1.4s_infinite] rounded-full bg-secondary" style={{ transform: "translateX(-100%)" }} />
+            <div className="h-full w-1/3 animate-[shimmer_1.4s_infinite] rounded-full bg-violet" style={{ transform: "translateX(-100%)" }} />
           </div>
         </Panel>
       )}
 
       <div className="mb-4 grid grid-cols-1 gap-4 lg:grid-cols-3">
-        <Panel>
+        <Panel tier="g1">
           <PanelHeader title="Scheduler" subtitle="Worker process (APScheduler)" />
           <div className="space-y-3 px-5 pb-5 pt-3 text-sm">
             {status.isLoading ? (

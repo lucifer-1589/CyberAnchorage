@@ -41,7 +41,12 @@ for (const theme of ["dark", "light"]) {
     for (const [name, path] of PAGES) {
       if (FILTER && !name.includes(FILTER)) continue;
       const page = await ctx.newPage();
-      page.on("console", (m) => { if (m.type() === "error" || m.type() === "warning") problems.push(`${theme}/${sizeName}/${name}: ${m.type()}: ${m.text()}`); });
+      page.on("console", (m) => {
+        if (m.type() !== "error" && m.type() !== "warning") return;
+        // the login page probes the refresh cookie first; its 401 is the expected "no session" answer
+        if (name === "login" && /status of 401/.test(m.text())) return;
+        problems.push(`${theme}/${sizeName}/${name}: ${m.type()}: ${m.text()}`);
+      });
       page.on("pageerror", (e) => problems.push(`${theme}/${sizeName}/${name}: pageerror: ${e.message}`));
       await page.addInitScript((t) => { localStorage.setItem("ca-theme", t); localStorage.setItem("ca-effects", "full"); }, theme);
       await installMockApi(page, { iocCount: 100_000, liveEveryMs: 600_000 });

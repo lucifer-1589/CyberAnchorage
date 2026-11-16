@@ -160,7 +160,7 @@ export async function installMockApi(page, { iocCount = 100_000, liveEveryMs = 1
     if (p === "/allowlist") return json(route, method === "GET" ? { items: [], total: 0, limit: 50, offset: 0 } : {});
     if (p === "/audit") return json(route, { items: [], total: 0, limit: 100, offset: 0 });
     if (p === "/users") return json(route, [user]);
-    if (p === "/settings") return json(route, {});
+    if (p === "/settings") return json(route, { allow_private_ips: false, default_tlp: "AMBER", expiry_days: { ipv4: 30, ipv6: 30, cidr: 90, domain: 90, url: 60, "ip:port": 30, onion: 180, asn: 365, ja3: 180, ja3s: 180 }, enabled_types: ["ipv4", "ipv6", "cidr", "domain", "url", "ip:port", "onion", "asn", "ja3", "ja3s"], regex_timeout_ms: 50, retro_statement_timeout_ms: 30000 });
     return json(route, {});
   });
 
