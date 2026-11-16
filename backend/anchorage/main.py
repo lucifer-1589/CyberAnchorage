@@ -9,7 +9,7 @@ from contextlib import asynccontextmanager
 from fastapi import APIRouter, FastAPI, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
 
-from anchorage.api import auth, rules, users
+from anchorage.api import auth, detections, iocs, ops, rules, users
 from anchorage.core.config import get_settings
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
@@ -59,7 +59,7 @@ def create_app(*, with_lifespan: bool = True) -> FastAPI:
     async def health() -> dict[str, str]:
         return {"status": "ok"}
 
-    for module in (auth, users, rules):
+    for module in (auth, users, iocs, rules, ops, detections):
         api.include_router(module.router)
     app.include_router(api)
     return app

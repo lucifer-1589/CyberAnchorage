@@ -72,3 +72,15 @@ Format: decision — reason. Deviations from the requested stack are marked **DE
 27. **DEVIATION (dev only)**: the build machine has no Docker/Postgres/Node. Backend tests run against an
     embedded PostgreSQL 16 started by the `pgserver` wheel when `TEST_DATABASE_URL` is unset; the frontend
     was built/tested with a portable Node 20. The shipped runtime is unchanged (docker-compose).
+28. **pg_trgm is conditional in migration 0001**: created when the extension is available (always in the
+    docker image); the embedded dev build lacks it, so search falls back to an unindexed `ILIKE`.
+29. **Detections are de-duplicated per event** (one row per IOC/rule per event): `dst_ip` and the derived
+    `dst_ip:port` observable usually hit the same IOC and would otherwise double-count.
+30. **Rules also run on bare observables** in real time (not only on known IOCs), so an IOC-free rule like
+    "ip:port with port 4444" detects on unseen infrastructure — the "same rules on event data" requirement.
+31. **Severity/verdict charts use a single-hue ordinal ramp**, not four status hues: the validator showed
+    yellow/orange/red adjacent bars are indistinguishable under deuteranopia. Badges keep distinct hues
+    but always add an icon, label and a 4-step bar glyph.
+32. **Source URLs in the IOC drawer are defanged** and never rendered as links (they point at dark-web pages).
+33. **Milestones M4 and M5 landed in one commit**: the UI shell, router and backend realtime seam were built
+    together and are only testable as a unit; M6 (polish/README) is a separate commit.

@@ -1,0 +1,212 @@
+@import "@fontsource-variable/inter";
+@import "@fontsource/jetbrains-mono/400.css";
+@import "@fontsource/jetbrains-mono/500.css";
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/*
+ * CyberAnchorage glass theme — Cyber Sentinel palette
+ *   primary   #34A99D (teal)      secondary #458393 (steel)
+ *   highlight #E5CB90 / #FFF3C8  (sand, warnings)
+ *
+ * Readability rules for glassmorphism:
+ *   - glass surfaces stay >= 60 % opaque so the backdrop never competes with text
+ *   - the backdrop is a calm, low-contrast gradient (no busy imagery behind tables)
+ *   - text tokens measured (WCAG) against the effective glass colour over the brightest glow:
+ *       dark : fg 14.0:1, fg-muted 8.0:1, fg-subtle 5.2:1, primary-text 8.4:1
+ *       light: fg 15.9:1, fg-muted 6.5:1, fg-subtle 4.6:1, primary-text 5.5:1
+ *   - primary is used as a FILL with dark ink (6.1:1); teal text uses --primary-text
+ *   - status hues are for icons/dots only (>= 3:1 non-text); labels use text tokens
+ *   - severity / verdict never rely on colour alone (icon + label + bar glyph)
+ * Values are space-separated RGB so Tailwind can apply alpha: rgb(var(--x) / <alpha>)
+ */
+:root,
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --bg: 8 17 22;
+  --bg-glow-1: 52 169 157;
+  --bg-glow-2: 69 131 147;
+  --bg-glow-3: 229 203 144;
+  --glow-1-a: 0.16;
+  --glow-2-a: 0.18;
+  --glow-3-a: 0.06;
+
+  --glass: 17 32 40;
+  --glass-a: 0.66;
+  --glass-strong: 20 37 46;
+  --glass-strong-a: 0.9;
+  --glass-border: 255 255 255;
+  --glass-border-a: 0.09;
+  --glass-highlight-a: 0.07;
+  --shadow: 0 10px 34px rgb(0 0 0 / 0.38);
+
+  --fg: 232 240 242;
+  --fg-muted: 166 186 192;
+  --fg-subtle: 128 150 157;
+  --line: 255 255 255;
+  --line-a: 0.08;
+  --hover: 255 255 255;
+  --hover-a: 0.05;
+
+  --primary: 52 169 157;
+  --primary-fg: 3 30 27;
+  --primary-text: 98 204 192;
+  --secondary: 69 131 147;
+  --secondary-text: 132 186 201;
+  --highlight: 229 203 144;
+  --highlight-soft: 255 243 200;
+  --warning-ink: 236 211 152;
+  --danger: 240 96 93;
+  --danger-text: 255 140 136;
+  --ring: 98 204 192;
+
+  /* status hues (badges/dots) — Okabe-Ito derived, always paired with icon + label */
+  --sev-low: 86 180 233;
+  --sev-medium: 224 172 52;
+  --sev-high: 239 138 76;
+  --sev-critical: 240 96 93;
+  --ver-abnormal: 160 150 240;
+  --ver-suspicious: 224 172 52;
+  --ver-malicious: 240 96 93;
+
+  /* chart roles (validated with the dataviz palette checker on #0F1D24) */
+  --chart-1: #34a99d;
+  --chart-2: #9085e9;
+  --chart-ord-1: #f6c6a8;
+  --chart-ord-2: #ef9665;
+  --chart-ord-3: #e0602b;
+  --chart-ord-4: #b8380c;
+  --chart-grid: rgb(255 255 255 / 0.07);
+  --chart-axis: rgb(166 186 192);
+}
+
+:root[data-theme="light"] {
+  color-scheme: light;
+  --bg: 228 237 240;
+  --glow-1-a: 0.2;
+  --glow-2-a: 0.16;
+  --glow-3-a: 0.28;
+
+  --glass: 255 255 255;
+  --glass-a: 0.68;
+  --glass-strong: 255 255 255;
+  --glass-strong-a: 0.92;
+  --glass-border: 15 40 48;
+  --glass-border-a: 0.1;
+  --glass-highlight-a: 0.7;
+  --shadow: 0 10px 30px rgb(20 50 60 / 0.1);
+
+  --fg: 13 29 35;
+  --fg-muted: 68 92 101;
+  --fg-subtle: 92 116 124;
+  --line: 15 40 48;
+  --line-a: 0.1;
+  --hover: 15 40 48;
+  --hover-a: 0.05;
+
+  --primary: 52 169 157;
+  --primary-fg: 3 30 27;
+  --primary-text: 13 112 101;
+  --secondary: 69 131 147;
+  --secondary-text: 46 98 112;
+  --highlight: 229 203 144;
+  --highlight-soft: 255 243 200;
+  --warning-ink: 107 78 0;
+  --danger: 196 43 43;
+  --danger-text: 168 32 32;
+  --ring: 13 112 101;
+
+  --sev-low: 42 120 214;
+  --sev-medium: 168 115 0;
+  --sev-high: 201 80 27;
+  --sev-critical: 196 43 43;
+  --ver-abnormal: 98 80 214;
+  --ver-suspicious: 168 115 0;
+  --ver-malicious: 196 43 43;
+
+  --chart-1: #00927f;
+  --chart-2: #6250d6;
+  --chart-ord-1: #e8875a;
+  --chart-ord-2: #d0612c;
+  --chart-ord-3: #a84112;
+  --chart-ord-4: #732206;
+  --chart-grid: rgb(15 40 48 / 0.08);
+  --chart-axis: rgb(68 92 101);
+}
+
+@layer base {
+  * {
+    @apply border-line;
+  }
+  html,
+  body,
+  #root {
+    height: 100%;
+  }
+  body {
+    @apply bg-bg font-sans text-fg antialiased;
+    font-feature-settings: "cv11", "ss01", "tnum";
+    background-color: rgb(var(--bg));
+    background-image:
+      radial-gradient(1100px 620px at 8% -8%, rgb(var(--bg-glow-1) / var(--glow-1-a)), transparent 60%),
+      radial-gradient(900px 600px at 105% 12%, rgb(var(--bg-glow-2) / var(--glow-2-a)), transparent 62%),
+      radial-gradient(900px 520px at 50% 115%, rgb(var(--bg-glow-3) / var(--glow-3-a)), transparent 60%);
+    background-attachment: fixed;
+  }
+  ::selection {
+    background: rgb(var(--primary) / 0.35);
+  }
+  :focus-visible {
+    outline: 2px solid rgb(var(--ring));
+    outline-offset: 2px;
+  }
+  /* calm, thin scrollbars */
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: rgb(var(--fg-subtle) / 0.45) transparent;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      transition-duration: 0.01ms !important;
+    }
+  }
+}
+
+@layer components {
+  /* Glass panel: frosted, readable, with a soft top highlight */
+  .glass {
+    background: rgb(var(--glass) / var(--glass-a));
+    border: 1px solid rgb(var(--glass-border) / var(--glass-border-a));
+    box-shadow: var(--shadow), inset 0 1px 0 rgb(255 255 255 / var(--glass-highlight-a));
+    -webkit-backdrop-filter: blur(18px) saturate(140%);
+    backdrop-filter: blur(18px) saturate(140%);
+  }
+  /* Overlays (drawers, menus, palette) are more opaque: text sits on top of busy content */
+  .glass-strong {
+    background: rgb(var(--glass-strong) / var(--glass-strong-a));
+    border: 1px solid rgb(var(--glass-border) / var(--glass-border-a));
+    box-shadow: var(--shadow), inset 0 1px 0 rgb(255 255 255 / var(--glass-highlight-a));
+    -webkit-backdrop-filter: blur(24px) saturate(150%);
+    backdrop-filter: blur(24px) saturate(150%);
+  }
+  /* Browsers without backdrop-filter get an opaque fallback so contrast holds */
+  @supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+    .glass {
+      background: rgb(var(--glass));
+    }
+    .glass-strong {
+      background: rgb(var(--glass-strong));
+    }
+  }
+  .mono {
+    @apply font-mono text-[12.5px] tracking-tight;
+  }
+  .row-hover:hover {
+    background: rgb(var(--hover) / var(--hover-a));
+  }
+}

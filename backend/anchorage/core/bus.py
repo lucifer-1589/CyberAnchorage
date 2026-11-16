@@ -28,7 +28,8 @@ class Bus(Protocol):
 
 
 def _envelope(channel: str, type_: str, data: dict[str, Any] | None) -> dict[str, Any]:
-    return {"channel": channel, "type": type_, "ts": datetime.now(UTC).isoformat(), "data": data or {}}
+    safe = json.loads(json.dumps(data or {}, default=str))  # datetimes etc. → JSON-safe for every bus
+    return {"channel": channel, "type": type_, "ts": datetime.now(UTC).isoformat(), "data": safe}
 
 
 class MemoryBus:
