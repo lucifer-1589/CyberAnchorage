@@ -19,7 +19,7 @@ Needs only **Python 3.12**. Open PowerShell **in the CyberAnchorage folder** and
 
 ```powershell
 cd D:\Emaago_work\Integeration\CyberAnchorage
-powershell -ExecutionPolicy Bypass -File .\scriptsun-local.ps1
+powershell -ExecutionPolicy Bypass -File .\scripts\run-local.ps1
 ```
 
 First run creates the Python environment (a few minutes), writes `.env` with a random JWT secret and
