@@ -261,7 +261,7 @@ export default function SyncPage() {
                               </div>
                             )}
                             {r.errors.length > 0 && (
-                              <ul className="mt-3 space-y-1 rounded-lg border border-danger/35 bg-danger/[0.07] p-3 text-xs text-fg">
+                              <ul className="mt-3 space-y-1 rounded-lg border border-danger/[.35] bg-danger/[0.07] p-3 text-xs text-fg">
                                 {r.errors.map((e, i) => (
                                   <li key={i} className="mono break-all">
                                     {Object.entries(e).map(([k, v]) => `${k}=${v}`).join("  ")}

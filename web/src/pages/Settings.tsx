@@ -7,6 +7,7 @@ import { cn, IOC_TYPES, TYPE_LABELS } from "@/lib/utils";
 import { useAuth } from "@/store/auth";
 import { useUi } from "@/store/ui";
 import { PageHeader } from "@/components/AppShell";
+import { EffectsToggle } from "@/components/EffectsToggle";
 import { Button, ErrorState, Input, Label, Panel, PanelHeader, Select, Skeleton } from "@/components/ui/primitives";
 import { Switch } from "@/components/ui/overlays";
 
@@ -50,11 +51,19 @@ export default function SettingsPage() {
               key={t}
               onClick={() => setTheme(t)}
               aria-pressed={theme === t}
-              className={cn("flex items-center gap-2 rounded-xl border px-4 py-3 text-sm font-medium transition", theme === t ? "border-primary bg-primary/12 text-fg" : "border-line text-fg-muted hover:text-fg")}
+              className={cn("flex items-center gap-2 rounded-xl border px-4 py-3 text-sm font-medium transition", theme === t ? "border-primary bg-primary/[.12] text-fg" : "border-line text-fg-muted hover:text-fg")}
             >
-              {t === "dark" ? <Moon className="size-4" /> : <Sun className="size-4" />} {t === "dark" ? "Dark (default)" : "Light"}
+              {t === "dark" ? <Moon className="size-4" /> : <Sun className="size-4" />} {t === "dark" ? "Royal Midnight (default)" : "Ivory Pearl"}
             </button>
           ))}
+        </div>
+        <div className="border-t border-line px-5 py-4">
+          <h3 className="text-sm font-semibold text-fg">Visual effects</h3>
+          <p className="mb-3 mt-0.5 max-w-2xl text-[13px] text-fg-muted">
+            Auto picks Full, Reduced or Off from how fast this device draws frames. Reduced uses a lighter blur and static backgrounds; Off removes every blur and
+            non-essential animation. The layout never changes.
+          </p>
+          <EffectsToggle />
         </div>
       </Panel>
       <Panel>

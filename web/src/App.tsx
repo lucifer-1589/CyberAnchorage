@@ -19,6 +19,8 @@ const DetectionsPage = lazy(() => import("@/pages/Detections"));
 const AuditPage = lazy(() => import("@/pages/Audit"));
 const UsersPage = lazy(() => import("@/pages/Users"));
 const SettingsPage = lazy(() => import("@/pages/Settings"));
+/** Dev-only component gallery; also built when VITE_UI_KIT=1 (screenshot runs). Absent from production. */
+const DevUiKit = import.meta.env.DEV || import.meta.env.VITE_UI_KIT === "1" ? lazy(() => import("@/pages/DevUiKit")) : null;
 
 function Splash() {
   return (
@@ -88,6 +90,7 @@ export function App() {
           ["/audit", <RequireRole role="analyst"><AuditPage /></RequireRole>],
           ["/users", <RequireRole role="admin"><UsersPage /></RequireRole>],
           ["/settings", <SettingsPage />],
+          ...(DevUiKit ? [["/dev/ui-kit", <DevUiKit />]] : []),
         ].map(([path, el]) => (
           <Route key={path as string} path={path as string} element={<Suspense fallback={<PageFallback />}>{el}</Suspense>} />
         ))}

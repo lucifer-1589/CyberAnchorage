@@ -173,6 +173,7 @@ export async function installMockApi(page, { iocCount = 100_000, liveEveryMs = 1
         ws.send(JSON.stringify({ type: n % 4 === 0 ? "flags.updated" : "detection.created", ts: new Date().toISOString(), data: { new_flags: n % 4 === 0 ? 2 : 0, id: n } }));
       } catch { clearInterval(t); }
     }, liveEveryMs);
+    t.unref?.(); // never keep the Node process alive after the browser closes
     ws.onClose(() => clearInterval(t));
   });
   return { iocs: IOCS, user };

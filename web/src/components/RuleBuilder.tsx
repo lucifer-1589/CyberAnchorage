@@ -213,9 +213,9 @@ export function ConditionEditor({
 
   if (node.op === "not") {
     return (
-      <div className="rounded-xl border border-dashed border-danger/45 p-2.5">
+      <div className="rounded-xl border border-dashed border-danger/[.45] p-2.5">
         <div className="mb-2 flex items-center justify-between">
-          <span className="inline-flex items-center gap-1.5 rounded-md bg-danger/12 px-2 py-0.5 text-xs font-bold uppercase tracking-wide text-danger-text">
+          <span className="inline-flex items-center gap-1.5 rounded-md bg-danger/[.12] px-2 py-0.5 text-xs font-bold uppercase tracking-wide text-danger-text">
             <Ban className="size-3.5" aria-hidden /> Not
           </span>
           {!readOnly && (
@@ -241,7 +241,7 @@ export function ConditionEditor({
   };
 
   return (
-    <div className={cn("rounded-2xl border p-3", depth === 0 ? "border-line" : "border-secondary/35 bg-secondary/[0.04]")}>
+    <div className={cn("rounded-2xl border p-3", depth === 0 ? "border-line" : "border-secondary/[.35] bg-secondary/[0.04]")}>
       <div className="mb-2.5 flex flex-wrap items-center gap-2">
         <div role="radiogroup" aria-label="Combine with" className="inline-flex overflow-hidden rounded-lg border border-line">
           {(["and", "or"] as const).map((op) => (
