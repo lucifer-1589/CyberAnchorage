@@ -62,7 +62,7 @@ Format: decision — reason. Deviations from the requested stack are marked **DE
     detections are `is_simulated=true` and badged in the UI.
 24. **UI components**: shadcn/ui is a code generator, so its components are vendored in `web/src/components/ui`
     (Radix primitives + Tailwind), restyled with the glass theme.
-25. **Glassmorphism, readability first**: glass surfaces are kept ≥ 55 % opaque with a 16-20 px blur over a
+25. *(Superseded by 34 for values; the readability principle stands.)* **Glassmorphism, readability first**: glass surfaces are kept ≥ 55 % opaque with a 16-20 px blur over a
     calm, low-contrast backdrop so text contrast stays ≥ 4.5:1 (body text ≈ 12:1 in dark mode). Primary
     `#34A99D` is used as a fill with dark text; in light mode text-on-white uses a darker teal `#1F7A70`
     (≥ 4.5:1). Severity uses the Okabe-Ito colour-blind-safe set *plus* an icon and label, never colour alone.
@@ -84,3 +84,32 @@ Format: decision — reason. Deviations from the requested stack are marked **DE
 32. **Source URLs in the IOC drawer are defanged** and never rendered as links (they point at dark-web pages).
 33. **Milestones M4 and M5 landed in one commit**: the UI shell, router and backend realtime seam were built
     together and are only testable as a unit; M6 (polish/README) is a separate commit.
+
+## Royal Glass UI system (web/UI-SYSTEM.md)
+34. **Royal Glass replaces the single glass tier.** Three tiers: G0 solid (no blur) for tables, charts,
+    logs and rule trees; G1 panel (14 px blur) for the sidebar, header, KPI band and filter bar; G2
+    floating (22 px blur) for the one open drawer, palette or menu. At most 6 blurred surfaces per
+    viewport. Tokens keep their old CSS variable names, so pages restyled without churn. Contrast is
+    checked on composited glass over the brightest orb (`npm run check:contrast`), not on swatches.
+35. **Visual effects Auto/Full/Reduced/Off** (`html[data-effects]`). Auto follows a perf tier: a hardware
+    hint refined by 60 measured frames. Off and reduced transparency paint a gradient fallback with the
+    same edge and shadow. Switching changes paint only; this is verified to 0 layout diffs by `perf:run`.
+36. **Blur never moves, and nothing repaints inside blur.** Glass in motion (drawer, route enter, page
+    scroll) paints its fallback until it settles. Charts and hover tints live on G0. Measured on a
+    software-rasterised 4× CPU run, these rules took Overview from 22 to 51 fps (Full) and 59 (Off).
+37. **Route transitions use CSS; the theme switch uses View Transitions.** Real route View Transitions
+    need the data router (`createBrowserRouter` + `viewTransition` links). With `BrowserRouter` and
+    `v7_startTransition`, navigation commits as a transition that `flushSync` cannot capture. Migrating
+    the router was out of scope for the UI pass.
+38. **Session refresh starts in index.html** (the CSP already allows inline scripts) and the current
+    route chunk is modulepreloaded from an inline route map. Both remove serial round trips before first
+    content. Same request, same cookie; `refreshSession()` consumes the early response once.
+39. **`motion` (LazyMotion + domAnimation, `m.*` only) and dnd-kit load only in the rule-editor chunk.**
+    Everything else animates with CSS or WAAPI. `layout` animations would need `domMax`, so reflow on
+    add/remove is instant; reorder animates through dnd-kit's transforms.
+40. **IOC table keeps TanStack Table + Virtual** but renders one virtual-body component, coalesces scroll
+    to one update per frame, uses slot keys and keeps Radix tooltips out of rows (native `title`). Compact
+    rows are 32 px (not 30) so the 24 × 24 row actions fit.
+41. **Mobile LCP in Lighthouse's mobile profile stays above 2.0 s (2.5–3.4 s)** for this auth-gated SPA.
+    Applied 4G + 4× CPU measures 1.8–1.9 s. Closing the gap needs SSR, Early Hints or a smaller critical
+    bundle, which are architecture work outside the UI pass (UI-SYSTEM.md §7).

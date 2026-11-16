@@ -19,7 +19,9 @@ Read `PLAN.md` (architecture/schema) and `DECISIONS.md` (why) before changing be
   - `ioc/` types registry + normalizer + merge · `sources/` CTI adapters · `sync/` sync service
   - `rules/` AST, validator, python + SQL compilers, engine · `realtime/` matcher index, detector, simulator
 - `backend/alembic/` — migrations. Change models → `make migration m="..."`.
-- `web/` — React 18 + TS + Vite. Theme tokens in `web/src/styles/globals.css`; UI kit in `web/src/components/ui`.
+- `web/` — React 18 + TS + Vite. Royal Glass UI system: read `web/UI-SYSTEM.md` before UI work. Tokens in
+  `web/src/styles/globals.css`, kit in `web/src/components/ui` (gallery: `/dev/ui-kit`, dev builds only),
+  runtime helpers in `web/src/lib/{perf,motion}.ts`, perf tooling in `web/scripts/perf/`.
 
 ## Adding an IOC type
 1. Add a normalizer + entry to `TYPE_REGISTRY` in `anchorage/ioc/types.py` (and aliases in `SOURCE_TYPE_ALIASES`).
@@ -35,4 +37,7 @@ Read `PLAN.md` (architecture/schema) and `DECISIONS.md` (why) before changing be
 - Async SQLAlchemy 2 style (`select()`), pydantic v2 schemas in `api/schemas.py` per router.
 - Times are UTC `timestamptz`. Scores/confidence are floats 0-1.
 - Frontend: TanStack Query for server state, Zustand only for UI/auth state. Toasts are 3 s.
-- Colours: never use severity colour alone — always icon + label (`components/SeverityBadge.tsx`).
+- Colours: never use severity colour alone — always icon + label (`components/badges.tsx`).
+- Glass: `Panel` defaults to G0; use `tier="g1"` only for hero surfaces (≤ 6 blurred per viewport, never
+  nested, nothing that repaints inside). Animate only transform/opacity, with the `--dur-*`/`--ease-*` tokens.
+- UI checks: `npm run check:contrast` (must pass), `npm run perf:run` / `perf:screens` against a preview build.
