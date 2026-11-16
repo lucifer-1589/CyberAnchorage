@@ -29,6 +29,9 @@ interface UiState {
   tier: Tier;
   tierMeasured: boolean;
   effects: Effects;
+  /** IOC table row density (persisted per browser) */
+  density: "compact" | "comfortable";
+  setDensity: (d: "compact" | "comfortable") => void;
   setEffectsPref: (p: EffectsPref) => void;
   setTheme: (t: Theme) => void;
   toggleTheme: () => void;
@@ -54,6 +57,11 @@ export const useUi = create<UiState>((set, get) => ({
   tier: initialTier,
   tierMeasured: false,
   effects: initialEffects,
+  density: read("ca-density") === "comfortable" ? "comfortable" : "compact",
+  setDensity: (density) => {
+    write("ca-density", density);
+    set({ density });
+  },
   setEffectsPref: (effectsPref) => {
     write("ca-effects", effectsPref);
     set({ effectsPref, effects: applyEffects(effectsPref, get().tier) });
