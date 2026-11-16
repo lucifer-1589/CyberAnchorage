@@ -233,6 +233,24 @@ export function AppShell({ children }: { children?: ReactNode }) {
     return () => window.removeEventListener("keydown", onKey);
   }, [setPalette]);
 
+  // "Blur never moves" also covers page scrolling: G1 panels inside <main> move over the fixed orbs, so they
+  // would re-blur every frame. While the document scrolls they paint their fallback; blur returns 150 ms after.
+  useEffect(() => {
+    let t: ReturnType<typeof setTimeout> | undefined;
+    const root = document.documentElement;
+    const onScroll = () => {
+      if (!root.hasAttribute("data-scrolling")) root.setAttribute("data-scrolling", "");
+      clearTimeout(t);
+      t = setTimeout(() => root.removeAttribute("data-scrolling"), 150);
+    };
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => {
+      clearTimeout(t);
+      window.removeEventListener("scroll", onScroll);
+      root.removeAttribute("data-scrolling");
+    };
+  }, []);
+
   // Sidebar collapse: the grid changes once (one layout); the content column then FLIPs from its old x
   // on the snappy spring. Nothing animates width.
   useLayoutEffect(() => {

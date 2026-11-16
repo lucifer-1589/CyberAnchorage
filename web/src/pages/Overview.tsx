@@ -164,7 +164,8 @@ export default function OverviewPage() {
       </Panel>
 
       <div className="grid grid-cols-1 gap-4 xl:grid-cols-3">
-        <Panel tier="g1" className={cn("xl:col-span-2", enterStyle(0).className)} style={enterStyle(0).style}>
+        {/* charts repaint on every pointer move (axis pointer, tooltip): they live on G0, never inside blur */}
+        <Panel className={cn("xl:col-span-2", enterStyle(0).className)} style={enterStyle(0).style}>
           <PanelHeader title="Ingestion timeline" subtitle="IOCs first ingested vs. flags raised per day · last 30 days" />
           <div className="px-3 pb-3">
             {isLoading ? (

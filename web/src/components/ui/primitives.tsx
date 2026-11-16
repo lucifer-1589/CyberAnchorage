@@ -3,6 +3,7 @@ import { cva, type VariantProps } from "class-variance-authority";
 import { AlertTriangle, Loader2, RefreshCw, TrendingDown, TrendingUp } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useCounter, useNumberFormat, useSpotlight } from "@/lib/motion";
+import { motionOK } from "@/lib/perf";
 
 /* ---------------------------------------------------------------- Button ---
  * primary: brand gradient + rotating conic edge — one per view, for the thing the page is for.
@@ -189,6 +190,8 @@ export function ErrorState({ error, onRetry }: { error: unknown; onRetry?: () =>
 
 /** Trend line + soft area; draws in once per mount (stroke-dashoffset on a pathLength=1 path). */
 export function Sparkline({ data, label, className }: { data: number[]; label: string; className?: string }) {
+  // Draw-in only when motion is allowed: at Effects Off `animation: none` would leave the dashed line hidden.
+  const [draw] = React.useState(motionOK);
   const mounted = React.useRef(false);
   React.useEffect(() => {
     mounted.current = true;
@@ -203,7 +206,7 @@ export function Sparkline({ data, label, className }: { data: number[]; label: s
   const area = `${d}L${pts[pts.length - 1][0].toFixed(1)} ${h}L${pts[0][0].toFixed(1)} ${h}Z`;
   return (
     <svg viewBox={`0 0 ${w} ${h}`} preserveAspectRatio="none" className={cn("block h-9 w-full overflow-visible", className)} role="img" aria-label={label}>
-      <path d={area} className={cn("fill-primary/15", !mounted.current && "animate-in fade-in duration-500")} />
+      <path d={area} className={cn("fill-primary/15", !mounted.current && draw && "animate-in fade-in duration-500")} />
       <path
         d={d}
         pathLength={1}
@@ -213,7 +216,7 @@ export function Sparkline({ data, label, className }: { data: number[]; label: s
         strokeLinecap="round"
         strokeLinejoin="round"
         vectorEffect="non-scaling-stroke"
-        style={mounted.current ? undefined : { strokeDasharray: 1, strokeDashoffset: 1, animation: "draw 500ms cubic-bezier(0.3,0,0,1) forwards" }}
+        style={mounted.current || !draw ? undefined : { strokeDasharray: 1, strokeDashoffset: 1, animation: "draw 500ms cubic-bezier(0.3,0,0,1) forwards" }}
       />
     </svg>
   );
@@ -268,12 +271,14 @@ export function Stat({
       style={style}
       className={cn(
         "group flex min-w-0 flex-col rounded-xl px-4 py-3.5 text-left",
-        onClick && "press transition-colors duration-1 hover:bg-[rgb(var(--hover)/0.04)]",
+        // no hover tint: stat cells sit inside a G1 band, and repainting inside blur costs frames.
+        // Hover shows as the label brightening (a few px of text) plus the press scale.
+        onClick && "press",
         className,
       )}
     >
       <div className="flex items-center justify-between gap-2">
-        <span className="truncate text-label uppercase text-fg-subtle">{label}</span>
+        <span className={cn("truncate text-label uppercase text-fg-subtle", onClick && "transition-colors duration-1 group-hover:text-fg")}>{label}</span>
         {Icon && <Icon className={cn("size-4 shrink-0", toneCls)} />}
       </div>
       <div className="mt-1.5 min-w-0">

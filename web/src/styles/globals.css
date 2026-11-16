@@ -289,6 +289,7 @@
     }
   }
   :root[data-effects="off"] :is(.glass, .glass-strong),
+  :root[data-scrolling] #main .glass,
   .settling:is(.glass, .glass-strong),
   .settling :is(.glass, .glass-strong) {
     -webkit-backdrop-filter: none;
@@ -376,12 +377,14 @@
   }
 
   /* Staggered entrance: enterStyle(i) sets --i for the first 12 items; the rest render instantly. */
+  /* fill `backwards`, not `both`: a filling transform animation keeps the element a containing block for
+     position:fixed descendants after it ends (it trapped dnd-kit's live regions). */
   .enter {
-    animation: rise var(--dur-3) var(--ease-emphasized) both;
+    animation: rise var(--dur-3) var(--ease-emphasized) backwards;
     animation-delay: calc(var(--i, 0) * 32ms);
   }
   .route-enter {
-    animation: route-in var(--dur-2) var(--ease-emphasized) both;
+    animation: route-in var(--dur-2) var(--ease-emphasized) backwards;
   }
   :root[data-vt] .route-enter {
     animation: none;

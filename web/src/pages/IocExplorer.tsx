@@ -1,8 +1,8 @@
-import { memo, useCallback, useEffect, useMemo, useRef, useState, type KeyboardEvent } from "react";
+import { memo, useCallback, useEffect, useMemo, useRef, useState, type KeyboardEvent, type RefObject } from "react";
 import { useSearchParams } from "react-router-dom";
 import { keepPreviousData, useInfiniteQuery, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { flexRender, getCoreRowModel, useReactTable, type ColumnDef, type ColumnSizingState, type Header, type Row, type SortingState } from "@tanstack/react-table";
-import { useVirtualizer } from "@tanstack/react-virtual";
+import { observeElementOffset, useVirtualizer, type Virtualizer } from "@tanstack/react-virtual";
 import { ArrowDown, ArrowUp, Bookmark, Search, Trash2, X } from "lucide-react";
 import { toast } from "sonner";
 import { api, del, post } from "@/lib/api";
@@ -24,6 +24,7 @@ const PAGE = 100;
 const ROW_H = { compact: 32, comfortable: 42 } as const;
 const CARD_H = 92; // phone layout: stacked card rows
 const FLEX_COL = "value"; // the indicator column absorbs spare width
+const SLOTS = 64; // > rows in view + 2 × overscan at the smallest row height
 
 function useIsWide(query = "(min-width: 768px)") {
   const get = () => (typeof window !== "undefined" && window.matchMedia ? window.matchMedia(query).matches : true);
@@ -163,11 +164,11 @@ export default function IocExplorerPage() {
   const columns = useMemo<ColumnDef<Ioc>[]>(
     () => [
       { id: "severity", header: "Verdict", size: 200, minSize: 150, cell: ({ row: { original: i } }) => (
-        <span className="flex items-center gap-1.5"><VerdictBadge verdict={i.verdict} allowlisted={i.allowlisted} />{i.severity && <SeverityBadge severity={i.severity} compact />}</span>
+        <span className="flex items-center gap-1.5"><VerdictBadge entity={i.id} verdict={i.verdict} allowlisted={i.allowlisted} />{i.severity && <SeverityBadge severity={i.severity} compact />}</span>
       ) },
       { id: "type", header: "Type", size: 86, minSize: 72, enableSorting: false, cell: ({ row }) => <TypeBadge type={row.original.type} /> },
       { id: "value", header: "Indicator", size: 300, minSize: 180, cell: ({ row: { original: i } }) => (
-        <span className="flex min-w-0 items-center gap-2"><IocValue id={i.id} value={i.value} />{i.is_demo && <DemoBadge />}</span>
+        <span className="flex min-w-0 items-center gap-2"><IocValue compact id={i.id} value={i.value} />{i.is_demo && <DemoBadge tip={false} />}</span>
       ) },
       { id: "source_count", header: "Sources", size: 180, minSize: 110, cell: ({ row: { original: i } }) => (
         <span className="flex min-w-0 gap-1 overflow-hidden">{i.sources.slice(0, 2).map((s) => <Chip key={s}>{s}</Chip>)}{i.sources.length > 2 && <Chip>+{i.sources.length - 2}</Chip>}</span>
@@ -198,13 +199,6 @@ export default function IocExplorerPage() {
   const scrollRef = useRef<HTMLDivElement>(null);
   const wide = useIsWide();
   const rowH = wide ? ROW_H[density] : CARD_H;
-  const virt = useVirtualizer({ count: rows.length, getScrollElement: () => scrollRef.current, estimateSize: () => rowH, overscan: 12 });
-  useEffect(() => virt.measure(), [rowH, virt]);
-  const items = virt.getVirtualItems();
-  useEffect(() => {
-    const lastItem = items[items.length - 1];
-    if (lastItem && lastItem.index >= rows.length - 20 && list.hasNextPage && !list.isFetchingNextPage) list.fetchNextPage();
-  }, [items, rows.length, list]);
 
   // Column widths live in one CSS variable on the scroller, so rows read it without per-row styles.
   const leaf = table.getVisibleLeafColumns();
@@ -221,19 +215,6 @@ export default function IocExplorerPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [sp],
   );
-  /** ↑/↓ move between rows, Home/End jump, Enter opens the drawer. */
-  const onRowKey = useCallback(
-    (e: KeyboardEvent<HTMLDivElement>, index: number, id: number) => {
-      if (e.key === "Enter") return open(id, e.currentTarget);
-      const next = e.key === "ArrowDown" ? index + 1 : e.key === "ArrowUp" ? index - 1 : e.key === "Home" ? 0 : e.key === "End" ? rows.length - 1 : null;
-      if (next === null || next < 0 || next >= rows.length) return;
-      e.preventDefault();
-      virt.scrollToIndex(next, { align: "auto" });
-      requestAnimationFrame(() => scrollRef.current?.querySelector<HTMLElement>(`[data-index="${next}"]`)?.focus());
-    },
-    [open, rows.length, virt],
-  );
-
   const opt = (k: string) => facets.data?.[k] ?? [];
   const activeCount = Object.keys(filters).filter((k) => k !== "q").length + (filters.q ? 1 : 0);
 
@@ -339,16 +320,16 @@ export default function IocExplorerPage() {
                   action={activeCount ? <Button size="sm" onClick={() => update(null)}>Clear filters</Button> : undefined}
                 />
               ) : (
-                <div role="rowgroup" className="[contain:strict]" style={{ height: virt.getTotalSize(), position: "relative" }}>
-                  {items.map((vi) => {
-                    const row = table.getRowModel().rows[vi.index];
-                    return wide ? (
-                      <IocRow key={row.id} row={row} index={vi.index} start={vi.start} height={rowH} selected={openId === row.original.id} onOpen={open} onKey={onRowKey} sizing={sizing} />
-                    ) : (
-                      <IocCard key={row.id} ioc={row.original} index={vi.index} start={vi.start} selected={openId === row.original.id} onOpen={open} onKey={onRowKey} />
-                    );
-                  })}
-                </div>
+                <IocTableBody
+                  scrollRef={scrollRef}
+                  rows={table.getRowModel().rows}
+                  rowH={rowH}
+                  wide={wide}
+                  openId={openId}
+                  onOpen={open}
+                  sizing={sizing}
+                  onNearEnd={() => list.hasNextPage && !list.isFetchingNextPage && list.fetchNextPage()}
+                />
               )}
               {list.isFetchingNextPage && <div className="p-3 text-center text-xs text-fg-muted">Loading more…</div>}
             </div>
@@ -356,6 +337,98 @@ export default function IocExplorerPage() {
         )}
       </Panel>
       <IocDrawer id={openId} origin={origin} onClose={() => update({ open: "" })} />
+    </div>
+  );
+}
+
+/** Coalesce scroll offsets to one virtualiser update per animation frame. The default handler re-renders
+ *  (flushSync) inside every scroll event, and each read of scrollTop forced a layout of the previous
+ *  event's rows; several events per frame multiplied that work. */
+function observeOffsetPerFrame(instance: Virtualizer<HTMLDivElement, Element>, cb: (offset: number, isScrolling: boolean) => void) {
+  let raf = 0;
+  let last: [number, boolean] = [0, false];
+  const stop = observeElementOffset(instance, (offset, isScrolling) => {
+    last = [offset, isScrolling];
+    if (!isScrolling) {
+      cancelAnimationFrame(raf);
+      raf = 0;
+      return cb(offset, false);
+    }
+    if (!raf)
+      raf = requestAnimationFrame(() => {
+        raf = 0;
+        cb(...last);
+      });
+  });
+  return () => {
+    cancelAnimationFrame(raf);
+    stop?.();
+  };
+}
+
+/** The virtualised body is its own component so scroll-driven re-renders touch only the rows, not the
+ *  filter bar, menus, header and drawer above it. */
+function IocTableBody({
+  scrollRef,
+  rows,
+  rowH,
+  wide,
+  openId,
+  onOpen,
+  sizing,
+  onNearEnd,
+}: {
+  scrollRef: RefObject<HTMLDivElement>;
+  rows: Row<Ioc>[];
+  rowH: number;
+  wide: boolean;
+  openId: number | null;
+  onOpen: (id: number, el: HTMLElement | null) => void;
+  sizing: ColumnSizingState;
+  onNearEnd: () => void;
+}) {
+  const virt = useVirtualizer({
+    count: rows.length,
+    getScrollElement: () => scrollRef.current,
+    estimateSize: () => rowH,
+    overscan: 12,
+    observeElementOffset: observeOffsetPerFrame,
+  });
+  useEffect(() => virt.measure(), [rowH, virt]);
+  const items = virt.getVirtualItems();
+  const lastIndex = items.length ? items[items.length - 1].index : 0;
+  const nearEnd = useRef(onNearEnd);
+  nearEnd.current = onNearEnd;
+  useEffect(() => {
+    if (lastIndex >= rows.length - 20) nearEnd.current();
+  }, [lastIndex, rows.length]);
+
+  /** ↑/↓ move between rows, Home/End jump, Enter opens the drawer. */
+  const onKey = useCallback(
+    (e: KeyboardEvent<HTMLDivElement>, index: number, id: number) => {
+      if (e.key === "Enter") return onOpen(id, e.currentTarget);
+      const next = e.key === "ArrowDown" ? index + 1 : e.key === "ArrowUp" ? index - 1 : e.key === "Home" ? 0 : e.key === "End" ? rows.length - 1 : null;
+      if (next === null || next < 0 || next >= rows.length) return;
+      e.preventDefault();
+      virt.scrollToIndex(next, { align: "auto" });
+      requestAnimationFrame(() => scrollRef.current?.querySelector<HTMLElement>(`[data-index="${next}"]`)?.focus());
+    },
+    [onOpen, rows.length, virt, scrollRef],
+  );
+
+  return (
+    <div role="rowgroup" className="[contain:strict]" style={{ height: virt.getTotalSize(), position: "relative" }}>
+      {items.map((vi) => {
+        const row = rows[vi.index];
+        // Slot keys (pool of 64): rows entering the window reuse DOM nodes of rows that left it, so scrolling
+        // patches a few text nodes instead of mounting ~25 nodes + hooks per row inside the virtualiser's flushSync.
+        const slot = vi.index % SLOTS;
+        return wide ? (
+          <IocRow key={slot} row={row} index={vi.index} start={vi.start} height={rowH} selected={openId === row.original.id} onOpen={onOpen} onKey={onKey} sizing={sizing} />
+        ) : (
+          <IocCard key={slot} ioc={row.original} index={vi.index} start={vi.start} selected={openId === row.original.id} onOpen={onOpen} onKey={onKey} />
+        );
+      })}
     </div>
   );
 }
@@ -473,14 +546,14 @@ const IocCard = memo(function IocCard({
       style={{ height: CARD_H, transform: `translateY(${start}px)` }}
     >
       <div role="cell" className="flex items-center gap-1.5">
-        <VerdictBadge verdict={i.verdict} allowlisted={i.allowlisted} />
+        <VerdictBadge entity={i.id} verdict={i.verdict} allowlisted={i.allowlisted} />
         {i.severity && <SeverityBadge severity={i.severity} compact />}
         <TypeBadge type={i.type} />
-        {i.is_demo && <DemoBadge />}
+        {i.is_demo && <DemoBadge tip={false} />}
         <span className="ml-auto text-[11.5px] text-fg-subtle">{timeAgo(i.last_seen)}</span>
       </div>
       <div role="cell" className="min-w-0">
-        <IocValue id={i.id} value={i.value} />
+        <IocValue compact id={i.id} value={i.value} />
       </div>
       <div role="cell" className="flex items-center gap-2 text-[11.5px] text-fg-muted">
         <span className="truncate">{i.sources.join(", ")}</span>

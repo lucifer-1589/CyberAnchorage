@@ -52,14 +52,15 @@ const VERDICT_META: Record<Verdict, { icon: typeof Activity; cls: string; dot: s
 };
 
 /** Verdict = icon + word on a 12 % tint (label inks are contrast-checked on the tint).
- *  When the verdict changes, the contents morph (scale .86 → 1 + fade); never on first render. */
-export function VerdictBadge({ verdict, allowlisted }: { verdict: Verdict | null | undefined; allowlisted?: boolean }) {
-  const mounted = useRef(false);
-  useEffect(() => {
-    mounted.current = true;
-  }, []);
+ *  When the verdict of the SAME entity changes, the contents morph (scale .86 → 1 + fade). Never on first
+ *  render, and never when a recycled table slot starts showing a different IOC (`entity` changes). */
+export function VerdictBadge({ verdict, allowlisted, entity }: { verdict: Verdict | null | undefined; allowlisted?: boolean; entity?: unknown }) {
   const key = allowlisted ? "allow" : (verdict ?? "none");
-  const morph = mounted.current ? "animate-morph" : undefined;
+  const prev = useRef<{ entity: unknown; key: string } | null>(null);
+  const morph = prev.current !== null && prev.current.entity === entity && prev.current.key !== key ? "animate-morph" : undefined;
+  useEffect(() => {
+    prev.current = { entity, key };
+  });
   if (allowlisted)
     return (
       <span className="inline-flex items-center rounded-md bg-primary/[.12] px-1.5 py-0.5 text-[11.5px] font-semibold text-primary-text">
@@ -118,15 +119,14 @@ export function TlpBadge({ tlp }: { tlp: string }) {
   );
 }
 
-export function DemoBadge({ label = "DEMO" }: { label?: string }) {
-  return (
-    <Tip content="Synthetic demo data from `make seed-demo` — not real threat intelligence">
-      <span className="inline-flex items-center gap-1 rounded-md border border-highlight/60 bg-highlight-soft/90 px-1.5 py-0.5 text-[10.5px] font-bold uppercase tracking-wide text-[#5b4300]">
+export function DemoBadge({ label = "DEMO", tip = true }: { label?: string; tip?: boolean }) {
+  const badge = (
+      <span title={tip ? undefined : "Synthetic demo data (make seed-demo) — not real threat intelligence"} className="inline-flex items-center gap-1 rounded-md border border-highlight/60 bg-highlight-soft/90 px-1.5 py-0.5 text-[10.5px] font-bold uppercase tracking-wide text-[#5b4300]">
         <FlaskConical className="size-3" aria-hidden />
         {label}
       </span>
-    </Tip>
   );
+  return tip ? <Tip content="Synthetic demo data from `make seed-demo` — not real threat intelligence">{badge}</Tip> : badge;
 }
 
 export function StatusPill({ status }: { status: string }) {

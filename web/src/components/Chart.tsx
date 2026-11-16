@@ -51,7 +51,7 @@ let loader: Promise<EchartsModule> | null = null;
 const loadEcharts = () => (loader ??= import("@/components/echarts"));
 
 /** Thin ECharts wrapper: lazy-loaded library, SVG renderer, theme-aware, resizes with its container.
- *  Series draw in once per mount (500 ms); later data updates animate in 200 ms. */
+ *  Series draw in once per mount (500 ms); later data updates apply without animation. */
 export function Chart({
   build,
   height = 240,
@@ -96,14 +96,18 @@ export function Chart({
     const chart = chartRef.current;
     if (!chart) return;
     const t = chartTheme();
-    const animate = motionOK();
+    // Draw in once per mount; later updates (live refetches) apply instantly. Animating updates also made
+    // ECharts interpolate the gradient series mid-flight and throw when data changed during a draw.
+    const animate = motionOK() && !drawn.current;
     chart.setOption(
       {
         aria: { enabled: true, label: { description: ariaLabel } },
         textStyle: { fontFamily: t.font },
         animation: animate,
-        animationDuration: drawn.current ? 200 : 500,
-        animationDurationUpdate: 200,
+        animationDuration: 500,
+        // hover/emphasis states switch instantly: ECharts' state transitions interpolate the gradient series
+        // colour and threw "reading 'length'" on every pointer move over a chart
+        stateAnimation: { duration: 0 },
         animationEasing: "cubicOut",
         ...build(t),
       },

@@ -10,7 +10,10 @@
     "test": "vitest run",
     "lint": "eslint .",
     "typecheck": "tsc -b --noEmit",
-    "check:contrast": "node scripts/contrast-check.mjs"
+    "check:contrast": "node scripts/contrast-check.mjs",
+    "perf:serve": "node scripts/perf/serve.mjs",
+    "perf:screens": "node scripts/perf/screens.mjs",
+    "perf:run": "node scripts/perf/run.mjs"
   },
   "dependencies": {
     "@dnd-kit/core": "6.1.0",

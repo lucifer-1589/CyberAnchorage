@@ -167,8 +167,11 @@ export function createMock({ iocCount = 100_000, role = "admin" } = {}) {
   return { handle, iocs: IOCS, user };
 }
 
+const shared = new Map(); // one 100k dataset per (iocCount, role) per process — pages share it
 export async function installMockApi(page, { iocCount = 100_000, liveEveryMs = 1500, role = "admin" } = {}) {
-  const mock = createMock({ iocCount, role });
+  const k = `${iocCount}:${role}`;
+  if (!shared.has(k)) shared.set(k, createMock({ iocCount, role }));
+  const mock = shared.get(k);
   await page.route("**/api/**", (route) => {
     const req = route.request();
     const { status, body } = mock.handle(req.method(), req.url(), req.postData());
