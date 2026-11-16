@@ -5,7 +5,7 @@ import { ArrowLeft, Code2, History, Save, Trash2, Undo2, Zap } from "lucide-reac
 import { toast } from "sonner";
 import { api, ApiError, del, post, put } from "@/lib/api";
 import type { Condition, FieldSpec, Ioc, Rule, Severity, Verdict } from "@/lib/types";
-import { fmtDate, fmtNum } from "@/lib/utils";
+import { cn, fmtDate, fmtNum } from "@/lib/utils";
 import { useAuth } from "@/store/auth";
 import { PageHeader } from "@/components/AppShell";
 import { SeverityBadge, TypeBadge, VerdictBadge } from "@/components/badges";
@@ -261,7 +261,8 @@ export default function RuleEditorPage() {
             </fieldset>
           </Panel>
 
-          <Panel>
+          {/* The rule being edited is the "active rule": while enabled it carries the rotating conic edge. */}
+          <Panel className={cn(draft.enabled && "cta-edge")}>
             <PanelHeader
               title="Condition"
               subtitle="Nested AND / OR / NOT. Allowlisted IOCs are never flagged, whatever the rule says."
@@ -282,7 +283,7 @@ export default function RuleEditorPage() {
           </Panel>
         </div>
 
-        <Panel className="xl:sticky xl:top-20 xl:self-start">
+        <Panel tier="g1" className="xl:sticky xl:top-20 xl:self-start">
           <PanelHeader
             title={
               <span className="flex items-center gap-2">

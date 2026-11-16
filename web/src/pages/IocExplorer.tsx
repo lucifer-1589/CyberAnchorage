@@ -428,7 +428,7 @@ const IocRow = memo(function IocRow({
       data-index={index}
       tabIndex={0}
       aria-rowindex={index + 2}
-      aria-selected={selected}
+      aria-current={selected || undefined}
       onClick={(e) => onOpen(id, e.currentTarget)}
       onKeyDown={(e) => onKey(e, index, id)}
       className={cn(

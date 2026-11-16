@@ -1,5 +1,11 @@
-import { useEffect, useState } from "react";
-import { Ban, Braces, Plus, Trash2 } from "lucide-react";
+import { useEffect, useState, type ReactNode } from "react";
+import { Ban, Braces, GripVertical, Plus, Trash2 } from "lucide-react";
+import { closestCenter, DndContext, KeyboardSensor, PointerSensor, useSensor, useSensors, type DragEndEvent } from "@dnd-kit/core";
+import { arrayMove, SortableContext, sortableKeyboardCoordinates, useSortable, verticalListSortingStrategy } from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
+import { AnimatePresence, LazyMotion, domAnimation } from "motion/react";
+import * as m from "motion/react-m";
+import { motionOK } from "@/lib/perf";
 import type { Condition, FieldSpec } from "@/lib/types";
 import { cn, TYPE_LABELS } from "@/lib/utils";
 import { Button, Input, Select } from "@/components/ui/primitives";
@@ -150,7 +156,7 @@ function ValueEditor({ f, op, value, onChange }: { f: FieldSpec; op: string; val
 function LeafEditor({ node, fields, onChange, onRemove, readOnly }: { node: Extract<Condition, { field: string }>; fields: FieldSpec[]; onChange: (c: Condition) => void; onRemove: () => void; readOnly?: boolean }) {
   const f = fields.find((x) => x.name === node.field) ?? fields[0];
   return (
-    <fieldset disabled={readOnly} className="grid grid-cols-1 items-start gap-2 rounded-xl border border-line bg-[rgb(var(--glass-strong)/0.35)] p-2.5 sm:grid-cols-[minmax(150px,190px)_minmax(140px,180px)_1fr_auto]">
+    <fieldset disabled={readOnly} className="grid min-w-0 flex-1 grid-cols-1 items-start gap-2 sm:grid-cols-[minmax(150px,190px)_minmax(140px,180px)_1fr_auto]">
       <Select
         value={node.field}
         aria-label="Field"
@@ -241,9 +247,9 @@ export function ConditionEditor({
   };
 
   return (
-    <div className={cn("rounded-2xl border p-3", depth === 0 ? "border-line" : "border-secondary/[.35] bg-secondary/[0.04]")}>
+    <div className={cn("rounded-2xl border p-3", depth === 0 ? "border-line" : "border-dashed border-violet/[.45] bg-violet/[.04]")}>
       <div className="mb-2.5 flex flex-wrap items-center gap-2">
-        <div role="radiogroup" aria-label="Combine with" className="inline-flex overflow-hidden rounded-lg border border-line">
+        <div role="radiogroup" aria-label="Combine with" className="inline-flex overflow-hidden rounded-full border border-highlight/40">
           {(["and", "or"] as const).map((op) => (
             <button
               key={op}
@@ -252,7 +258,7 @@ export function ConditionEditor({
               aria-checked={g.op === op}
               disabled={readOnly}
               onClick={() => onChange({ ...g, op })}
-              className={cn("px-3 py-1 text-xs font-bold uppercase tracking-wide transition", g.op === op ? "bg-primary text-primary-fg" : "text-fg-muted hover:text-fg")}
+              className={cn("px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.08em] transition-colors duration-1", g.op === op ? "bg-highlight/[.18] text-highlight-ink" : "text-fg-muted hover:text-fg")}
             >
               {op}
             </button>
@@ -280,14 +286,83 @@ export function ConditionEditor({
           </div>
         )}
       </div>
-      <div className="space-y-2">
+      <SortableChildren
+        ids={g.children.map((c, i) => c.id ?? `i${i}`)}
+        readOnly={readOnly}
+        onMove={(from, to) => onChange({ ...g, children: arrayMove(g.children, from, to) })}
+      >
         {g.children.map((c, i) => (
-          <div key={c.id ?? i} className="relative">
-            {i > 0 && <div className="mb-1 ml-3 text-[10.5px] font-bold uppercase tracking-wider text-fg-subtle">{g.op}</div>}
+          <SortableItem key={c.id ?? `i${i}`} id={c.id ?? `i${i}`} readOnly={readOnly} label={"field" in c ? c.field : `${"op" in c ? c.op : ""} group`} logic={i > 0 ? g.op : null}>
             <ConditionEditor node={c} fields={fields} depth={depth + 1} readOnly={readOnly} onChange={(n) => setChild(i, n)} onRemove={() => removeChild(i)} />
-          </div>
+          </SortableItem>
         ))}
-      </div>
+      </SortableChildren>
     </div>
+  );
+}
+
+/* ── Drag & drop: dnd-kit (pointer + keyboard sensors) moves siblings with transforms only;
+ *    motion (LazyMotion + domAnimation, m.* only) fades conditions in/out when added or removed. ── */
+
+function SortableChildren({ ids, readOnly, onMove, children }: { ids: string[]; readOnly?: boolean; onMove: (from: number, to: number) => void; children: ReactNode }) {
+  const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 4 } }), useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }));
+  const onDragEnd = ({ active, over }: DragEndEvent) => {
+    if (!over || active.id === over.id) return;
+    onMove(ids.indexOf(String(active.id)), ids.indexOf(String(over.id)));
+  };
+  return (
+    <LazyMotion features={domAnimation} strict>
+      <DndContext
+        sensors={sensors}
+        collisionDetection={closestCenter}
+        onDragEnd={onDragEnd}
+        accessibility={{
+          screenReaderInstructions: { draggable: "To reorder a condition, press space to pick it up, the arrow keys to move it, space to drop it, or escape to cancel." },
+        }}
+      >
+        <SortableContext items={ids} strategy={verticalListSortingStrategy} disabled={readOnly}>
+          <div className="space-y-2">
+            <AnimatePresence initial={false}>{children}</AnimatePresence>
+          </div>
+        </SortableContext>
+      </DndContext>
+    </LazyMotion>
+  );
+}
+
+function SortableItem({ id, readOnly, label, logic, children }: { id: string; readOnly?: boolean; label: string; logic: string | null; children: ReactNode }) {
+  const { attributes, listeners, setNodeRef, setActivatorNodeRef, transform, transition, isDragging } = useSortable({ id, disabled: readOnly });
+  const animate = motionOK();
+  return (
+    <m.div
+      initial={animate ? { opacity: 0, y: -6 } : false}
+      animate={{ opacity: 1, y: 0 }}
+      exit={animate ? { opacity: 0, scale: 0.98, transition: { duration: 0.12, ease: [0.4, 0, 1, 1] } } : undefined}
+      transition={{ duration: 0.2, ease: [0.3, 0, 0, 1] }}
+    >
+      {logic && <div className="mb-1 ml-9 text-[10.5px] font-semibold uppercase tracking-[0.08em] text-highlight-ink">{logic}</div>}
+      <div
+        ref={setNodeRef}
+        style={{ transform: CSS.Translate.toString(transform), transition: transition ?? undefined }}
+        className={cn(
+          "relative flex items-start gap-1 rounded-xl border border-line bg-control/60 p-2",
+          isDragging && "z-10 scale-[1.015] border-[rgb(var(--grad-2)/0.6)] bg-control shadow-[var(--shadow-g2)]",
+        )}
+      >
+        {!readOnly && (
+          <button
+            ref={setActivatorNodeRef}
+            type="button"
+            className="mt-1.5 grid h-7 w-6 shrink-0 cursor-grab touch-none place-items-center rounded text-fg-subtle hover:text-fg active:cursor-grabbing"
+            aria-label={`Reorder ${label}`}
+            {...attributes}
+            {...listeners}
+          >
+            <GripVertical className="size-4" aria-hidden />
+          </button>
+        )}
+        <div className="min-w-0 flex-1">{children}</div>
+      </div>
+    </m.div>
   );
 }

@@ -147,7 +147,7 @@ export async function installMockApi(page, { iocCount = 100_000, liveEveryMs = 1
     if ((m = p.match(/^\/rules\/(\d+)$/))) return json(route, RULES[Number(m[1]) - 1]);
     if ((m = p.match(/^\/rules\/(\d+)\/versions$/))) return json(route, [3, 2, 1].map((v) => ({ version: v, snapshot: {}, changed_by_email: user.email, change_note: v === 3 ? "tighten source_count" : "", changed_at: iso(NOW - v * DAY) })));
     if ((m = p.match(/^\/rules\/(\d+)\/toggle$/))) return json(route, { ...RULES[Number(m[1]) - 1], enabled: JSON.parse(route.request().postData() ?? "{}").enabled });
-    if (p === "/rules/dry-run") return json(route, { total: 1240, sample: IOCS.slice(0, 8), by_type: facet(IOCS.slice(0, 1240), "type"), elapsed_ms: 38 });
+    if (p === "/rules/dry-run") return json(route, { count: 1240, allowlisted: 18, samples: IOCS.filter((i) => i.score > 0.85).slice(0, 8) }); // DryRunOut
     if (p === "/sync/status") return json(route, {
       sources: SOURCES.map((s, i) => ({ source: s, store: `${s}.db`, path: `darkweb_intel/${s}.db`, ok: i !== 3, detail: i === 3 ? "snapshot older than 26 h" : "ok", rows: 25000 + i * 3100, size_bytes: (40 + i * 12) * 1e6, modified_at: iso(NOW - i * 3600_000), is_demo: false })),
       cursors: SOURCES.map((s, i) => ({ source_key: s, max_rowid: 25000 + i * 3100, max_last_seen: iso(NOW - i * 3600_000), updated_at: iso(NOW - i * 3600_000) })),

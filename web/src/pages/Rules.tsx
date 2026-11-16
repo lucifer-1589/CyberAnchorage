@@ -4,7 +4,8 @@ import { ListChecks, Plus } from "lucide-react";
 import { toast } from "sonner";
 import { api, post } from "@/lib/api";
 import type { Rule } from "@/lib/types";
-import { fmtNum, timeAgo } from "@/lib/utils";
+import { cn, fmtNum, timeAgo } from "@/lib/utils";
+import { enterStyle } from "@/lib/motion";
 import { useAuth } from "@/store/auth";
 import { PageHeader } from "@/components/AppShell";
 import { DemoBadge, SeverityBadge, VerdictBadge } from "@/components/badges";
@@ -56,8 +57,8 @@ export default function RulesPage() {
           />
         ) : (
           <ul className="divide-y divide-[rgb(var(--line)/var(--line-a))]">
-            {data.map((r) => (
-              <li key={r.id} className="row-hover flex flex-col gap-3 px-4 py-3.5 sm:flex-row sm:items-center">
+            {data.map((r, i) => (
+              <li key={r.id} className={cn("row-hover flex flex-col gap-3 px-4 py-3.5 sm:flex-row sm:items-center", enterStyle(i).className)} style={enterStyle(i).style}>
                 <button className="min-w-0 flex-1 text-left" onClick={() => navigate(`/rules/${r.id}`)}>
                   <div className="flex flex-wrap items-center gap-2">
                     <span className="truncate text-[14.5px] font-semibold text-fg">{r.name}</span>
