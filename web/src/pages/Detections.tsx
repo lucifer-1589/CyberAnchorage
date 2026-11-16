@@ -2,6 +2,7 @@ import { useState } from "react";
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { FlaskConical, Radar, Send } from "lucide-react";
 import { toast } from "sonner";
+import { useRealtimeStatus } from "@/lib/realtime";
 import { api, post } from "@/lib/api";
 import type { Detection, Page } from "@/lib/types";
 import { fmtDate, fmtNum, timeAgo } from "@/lib/utils";
@@ -10,12 +11,6 @@ import { PageHeader } from "@/components/AppShell";
 import { SeverityBadge, TypeBadge, VerdictBadge } from "@/components/badges";
 import { Button, Chip, EmptyState, ErrorState, Label, Panel, PanelHeader, Skeleton, Textarea } from "@/components/ui/primitives";
 import { Sheet, SheetContent } from "@/components/ui/overlays";
-
-interface RtStatus {
-  event_source: string;
-  simulator: boolean;
-  index: { exact: number; cidr: number; suffix: number; rules: number; built_at: string; build_ms: number };
-}
 
 const SAMPLE = JSON.stringify(
   [{ ts: new Date().toISOString(), sensor: "fw-edge-1", src_ip: "10.20.1.15", dst_ip: "203.0.113.10", dst_port: 443, query: "login-secure.example.top" }],
@@ -57,7 +52,7 @@ function TestEvent() {
 export default function DetectionsPage() {
   const canIngest = useAuth((s) => s.can("analyst"));
   const [page, setPage] = useState(0);
-  const status = useQuery({ queryKey: ["realtime"], queryFn: () => api<RtStatus>("/realtime/status"), refetchInterval: 30_000 });
+  const status = useRealtimeStatus();
   const list = useQuery({
     queryKey: ["detections", page],
     queryFn: () => api<Page<Detection>>("/detections", { query: { limit: 50, offset: page * 50 } }),

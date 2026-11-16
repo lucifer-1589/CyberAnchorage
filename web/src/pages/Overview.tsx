@@ -1,8 +1,9 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
-import { AlertOctagon, BarChart3, CalendarClock, Database, ListChecks, Radar, Sparkles, Table2 } from "lucide-react";
+import { AlertOctagon, BarChart3, CalendarClock, Database, Hourglass, ListChecks, Radar, Sparkles, Table2 } from "lucide-react";
 import { api } from "@/lib/api";
+import { useRealtimeVisible } from "@/lib/realtime";
 import type { Facet } from "@/lib/types";
 import { cn, duration, fmtDate, fmtNum, timeAgo, TYPE_LABELS } from "@/lib/utils";
 import { enterStyle } from "@/lib/motion";
@@ -122,6 +123,7 @@ function hbar(rows: Facet[], color: (t: ChartTheme, i: number, key: string) => s
 
 export default function OverviewPage() {
   const navigate = useNavigate();
+  const realtime = useRealtimeVisible();
   const { data, isLoading, error, refetch } = useQuery({
     queryKey: ["overview"],
     queryFn: () => api<Overview>("/stats/overview"),
@@ -152,7 +154,11 @@ export default function OverviewPage() {
         <Stat label="New in 24 h" value={t.new_24h ?? 0} delta={dayDelta(ingested)} hint="vs yesterday" icon={Sparkles} tone="primary" loading={isLoading} onClick={() => navigate("/iocs?new=24")} />
         <Stat label="Flagged" value={t.flagged ?? 0} delta={dayDelta(flagged)} goodWhen="down" hint="vs yesterday" icon={AlertOctagon} tone="danger" spark={flagged} loading={isLoading} onClick={() => navigate("/flags")} />
         <Stat label="Enabled rules" value={t.rules_enabled ?? 0} hint={`${fmtNum(t.allowlisted)} allowlisted IOCs`} icon={ListChecks} loading={isLoading} onClick={() => navigate("/rules")} />
-        <Stat label="Detections 24 h" value={t.detections_24h ?? 0} hint="real-time seam" icon={Radar} tone="warning" loading={isLoading} onClick={() => navigate("/detections")} />
+        {realtime ? (
+          <Stat label="Detections 24 h" value={t.detections_24h ?? 0} hint="real-time seam" icon={Radar} tone="warning" loading={isLoading} onClick={() => navigate("/detections")} />
+        ) : (
+          <Stat label="Expired" value={t.expired ?? 0} hint="aged out of the active window" icon={Hourglass} loading={isLoading} onClick={() => navigate("/iocs?status=expired")} />
+        )}
         <Stat
           label="Last sync"
           value={last ? timeAgo(last.finished_at ?? last.started_at) : "never"}

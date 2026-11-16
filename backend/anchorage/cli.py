@@ -55,6 +55,63 @@ async def create_admin(email: str, password: str | None) -> None:
     print(f"admin {email} ready")
 
 
+async def purge_demo(if_present: bool = False) -> None:
+    """Remove every trace of the synthetic demo data, then rebuild the IOC store from the real CTI only.
+
+    Demo and real sightings of the same value are merged into one IOC row (sources, score, TLP, tags), so they
+    cannot be separated after the fact: all ingested state (IOCs + flags, source cursors/row hashes, sync
+    history) is cleared and a full reconcile re-reads the real stores. Rules, allowlist, users, settings and
+    the audit log are kept; the sample rules stay as ordinary starter rules (no DEMO badge) and are audited.
+    """
+    import shutil
+    from pathlib import Path
+
+    from sqlalchemy import delete, update
+
+    from anchorage.core.audit import audit
+    from anchorage.models import Detection, Ioc, Rule, SourceCursor, SourceRowState, SyncRun
+    from anchorage.sync.service import SyncService
+
+    s = get_settings()
+    demo_dir = Path(s.demo_cti_dir).resolve()
+    cti_dir = Path(s.cti_data_dir).resolve()
+    async with session_scope() as session:
+        counts = {
+            "iocs": await session.scalar(select(func.count()).select_from(Ioc)),
+            "demo_iocs": await session.scalar(select(func.count()).select_from(Ioc).where(Ioc.is_demo.is_(True))),
+            "simulated_detections": await session.scalar(
+                select(func.count()).select_from(Detection).where(Detection.is_simulated.is_(True))),
+            "sync_runs": await session.scalar(select(func.count()).select_from(SyncRun)),
+        }
+        demo_rules = (await session.execute(select(Rule.id, Rule.name).where(Rule.is_demo.is_(True)))).all()
+        demo_sources = await session.scalar(select(func.count()).select_from(SourceCursor)
+                                            .where(SourceCursor.source_key.like("demo:%")))
+        if if_present and not (counts["demo_iocs"] or counts["simulated_detections"] or demo_rules
+                               or demo_sources or demo_dir.exists()):
+            print("purge-demo: no demo data present")
+            return
+        await session.execute(delete(Detection).where(Detection.is_simulated.is_(True)))
+        await session.execute(delete(Ioc))  # ioc_flags cascade
+        await session.execute(delete(SourceRowState))
+        await session.execute(delete(SourceCursor))
+        await session.execute(delete(SyncRun))
+        await session.execute(update(Rule).where(Rule.is_demo.is_(True)).values(is_demo=False))
+        for rid, name in demo_rules:
+            await audit(session, None, "rule.update", "rule", rid, {"is_demo": True},
+                        {"is_demo": False, "note": f"kept as starter rule after demo purge: {name}"})
+        await audit(session, None, "data.purge_demo", "system", None, counts,
+                    {"demo_rules_kept_as_starter_rules": len(demo_rules)})
+    print(f"purge-demo: cleared {counts}; {len(demo_rules)} sample rule(s) kept as starter rules")
+
+    if demo_dir.exists() and cti_dir not in (demo_dir, *demo_dir.parents) and demo_dir != cti_dir:
+        shutil.rmtree(demo_dir)  # our own generated fixture, never inside the CTI folder
+        print(f"purge-demo: removed demo fixture {demo_dir}")
+
+    run = await SyncService().run("daily", triggered_by="purge-demo")
+    print(f"purge-demo: full reconcile from the real CTI -> {run.status}: {run.new_count} IOCs, "
+          f"{run.rejected_count} rejected, {run.flagged_count} flagged")
+
+
 def main(argv: list[str] | None = None) -> None:
     parser = argparse.ArgumentParser(prog="anchorage")
     sub = parser.add_subparsers(dest="cmd", required=True)
@@ -70,6 +127,8 @@ def main(argv: list[str] | None = None) -> None:
     sy.add_argument("--kind", choices=["manual", "hourly", "daily"], default="manual")
     sy.add_argument("--inline", action="store_true", help="run in this process instead of queueing")
     sub.add_parser("reevaluate")
+    pd = sub.add_parser("purge-demo", help="delete all demo data and re-sync from the real CTI only")
+    pd.add_argument("--if-present", action="store_true", help="do nothing when no demo data is present")
     args = parser.parse_args(argv)
 
     async def run() -> None:
@@ -93,6 +152,8 @@ def main(argv: list[str] | None = None) -> None:
                 from anchorage.sync.service import queue_or_run
 
                 print(await queue_or_run(args.kind, inline=args.inline, triggered_by="cli"))
+            elif args.cmd == "purge-demo":
+                await purge_demo(if_present=args.if_present)
             elif args.cmd == "reevaluate":
                 from anchorage.rules.engine import RuleEngine
 

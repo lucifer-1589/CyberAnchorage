@@ -113,3 +113,21 @@ Format: decision — reason. Deviations from the requested stack are marked **DE
 41. **Mobile LCP in Lighthouse's mobile profile stays above 2.0 s (2.5–3.4 s)** for this auth-gated SPA.
     Applied 4G + 4× CPU measures 1.8–1.9 s. Closing the gap needs SSR, Early Hints or a smaller critical
     bundle, which are architecture work outside the UI pass (UI-SYSTEM.md §7).
+
+## Real data by default
+42. **CTI stores are copied, never opened.** A `mode=ro` SQLite connection still creates or updates the
+    `-shm` (and an empty `-wal`) next to a WAL-mode database. That is a write into the CTI folder, and it
+    happened on the first local runs (the database files themselves were never changed). Snapshots now
+    file-copy `db` + `-wal`/`-journal`, retry if the source moved during the copy, replay the WAL in the
+    private copy and `quick_check` it. The Sync page's row counts use the same snapshots, cached per file
+    fingerprint. Rows still in the CTI's WAL are included (`test_wal_store_with_live_writer_...`).
+43. **Local mode shows real data only.** `run-local.ps1` seeds demo data only with `-Demo`; otherwise
+    `purge-demo --if-present` runs on start. Demo and real sightings of one value merge into one IOC row,
+    so the purge clears all ingested state (IOCs, flags, cursors, row hashes, sync history, simulated
+    detections) and re-reads the real CTI with a full reconcile. Rules, allowlist, users, settings and the
+    audit log are kept. The sample rules lose their DEMO badge and stay as starter rules (audited).
+44. **The worker catches up on start.** A local app is often closed at 07:00 UTC, so start-up runs a full
+    reconcile when none succeeded in 24 h, otherwise an incremental run when none succeeded in the last hour.
+45. **Real-time screens hide until something can produce events.** Level 1 ships only the seam, so the
+    Detections nav item, palette entry, KPI tile and drawer row appear only when `/api/realtime/status`
+    reports an event source (incl. the labelled simulator) or an ingest token. The KPI slot shows Expired.

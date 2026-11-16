@@ -24,10 +24,18 @@ powershell -ExecutionPolicy Bypass -File .\scripts\run-local.ps1
 
 First run creates the Python environment (a few minutes), writes `.env` with a random JWT secret and
 admin password (printed once, also saved as `ADMIN_PASSWORD` in `.env`), starts an embedded
-PostgreSQL 16 on `127.0.0.1:54329` (data in `data\pg`), seeds the demo data, and opens
+PostgreSQL 16 on `127.0.0.1:54329` (data in `data\pg`), syncs the **real Dark Web CTI** stores, and opens
 http://127.0.0.1:8077. One process runs the API, the hourly/daily scheduler and the UI. Ctrl+C stops everything.
 
-Options: `-Simulator` (labelled demo detection feed) · `-Reseed` (regenerate demo data) · `-Port 9000` · `-NoBrowser`.
+By default **only real CTI data** is shown. Any demo data or simulated detections left in the database
+are removed on start (`python -m anchorage.cli purge-demo`), and the IOC store is rebuilt from the real
+stores. On every start the app catches up on missed syncs: a full reconcile if none succeeded in 24 h,
+otherwise an incremental run if none succeeded in the last hour. After that it syncs hourly and reconciles
+daily at 07:00 UTC. The data is only as fresh as the CTI itself: CyberAnchorage never runs the CTI, it reads
+what the CTI has written. Real-time detection screens stay hidden until an event source is connected.
+
+Options: `-Demo` (add the synthetic demo dataset) · `-Simulator` (labelled simulated detection feed) ·
+`-Reseed` (regenerate demo data) · `-Port 9000` · `-NoBrowser`.
 The launcher builds the web UI on first run and rebuilds it automatically whenever the frontend source is
 newer than `web\dist` (for example after `git pull`).
 

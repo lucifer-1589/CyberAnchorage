@@ -18,6 +18,8 @@ export interface NavItem {
   label: string;
   icon: typeof Activity;
   role?: Role;
+  /** only shown when a real-time event source is connected (see lib/realtime.ts) */
+  realtime?: boolean;
 }
 
 export const NAV: { section: string; items: NavItem[] }[] = [
@@ -27,7 +29,7 @@ export const NAV: { section: string; items: NavItem[] }[] = [
       { to: "/", label: "Overview", icon: LayoutDashboard },
       { to: "/iocs", label: "IOC Explorer", icon: Database },
       { to: "/flags", label: "Flags", icon: Flag },
-      { to: "/detections", label: "Detections", icon: Radar },
+      { to: "/detections", label: "Detections", icon: Radar, realtime: true },
     ],
   },
   {

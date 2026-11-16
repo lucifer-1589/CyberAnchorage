@@ -13,7 +13,7 @@ from pathlib import Path
 from anchorage.core.config import DEFAULT_CTI_STORES
 from anchorage.sources.base import Cursor, SourceHealth, SourceRow, TableHandle
 from anchorage.sources.readers import READERS, count_out_of_scope, load_apt_dictionary
-from anchorage.sources.snapshot import has_table, open_snapshot, snapshot_sqlite
+from anchorage.sources.snapshot import fingerprint, has_table, open_snapshot, snapshot_sqlite
 
 log = logging.getLogger(__name__)
 
@@ -86,12 +86,8 @@ class SqliteSnapshotSource:
             detail = "ok"
             if store in READERS:
                 try:
-                    con = sqlite3.connect(path.resolve().as_uri() + "?mode=ro", uri=True, timeout=2)
-                    try:
-                        rows = int(con.execute(f'SELECT count(*) FROM "{READERS[store][0].table}"').fetchone()[0])
-                    finally:
-                        con.close()
-                except sqlite3.Error as exc:
+                    rows = _row_count(path, READERS[store][0].table)
+                except (sqlite3.Error, OSError) as exc:
                     detail = f"unreadable: {exc}"
             else:
                 detail = "enrichment"
@@ -107,3 +103,26 @@ class SqliteSnapshotSource:
         if self._tmp:
             shutil.rmtree(self._tmp, ignore_errors=True)
             self._tmp = None
+
+
+# path -> (file fingerprint, row count): the health view re-snapshots a store only when it changed
+_ROWS_CACHE: dict[str, tuple[tuple[tuple[str, int, int], ...], int]] = {}
+
+
+def _row_count(path: Path, table: str) -> int:
+    """Row count of a CTI table, read from a private snapshot (the CTI file itself is never opened)."""
+    fp = fingerprint(path)
+    cached = _ROWS_CACHE.get(str(path))
+    if cached and cached[0] == fp:
+        return cached[1]
+    tmp = Path(tempfile.mkdtemp(prefix="anchorage-health-"))
+    try:
+        con = open_snapshot(snapshot_sqlite(path, tmp))
+        try:
+            rows = int(con.execute(f'SELECT count(*) FROM "{table}"').fetchone()[0])  # internal constant
+        finally:
+            con.close()
+    finally:
+        shutil.rmtree(tmp, ignore_errors=True)
+    _ROWS_CACHE[str(path)] = (fp, rows)
+    return rows

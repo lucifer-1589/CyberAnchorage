@@ -10,6 +10,7 @@ import type { Ioc, Rule } from "@/lib/types";
 import { useAuth } from "@/store/auth";
 import { useUi } from "@/store/ui";
 import { NAV } from "@/components/nav";
+import { useRealtimeVisible } from "@/lib/realtime";
 import { SeverityBadge, TypeBadge } from "@/components/badges";
 import { Kbd } from "@/components/ui/primitives";
 import { withViewTransition } from "@/lib/motion";
@@ -30,6 +31,7 @@ const groupCls = "[&_[cmdk-group-heading]]:px-3 [&_[cmdk-group-heading]]:pb-1 [&
 export function CommandPalette() {
   const { paletteOpen, setPalette, toggleTheme } = useUi();
   const can = useAuth((s) => s.can);
+  const realtime = useRealtimeVisible();
   const navigate = useNavigate();
   const [q, setQ] = useState("");
   const dq = useDebounced(q.trim());
@@ -42,7 +44,7 @@ export function CommandPalette() {
   });
 
   const pages = NAV.flatMap((g) => g.items).filter(
-    (i) => (!i.role || can(i.role)) && (!q || i.label.toLowerCase().includes(q.toLowerCase())),
+    (i) => (!i.role || can(i.role)) && (!i.realtime || realtime) && (!q || i.label.toLowerCase().includes(q.toLowerCase())),
   );
 
   const go = (to: string) => {

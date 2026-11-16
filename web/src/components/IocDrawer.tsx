@@ -4,6 +4,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { MessageSquare, Radar, ShieldCheck } from "lucide-react";
 import { toast } from "sonner";
 import { api, post } from "@/lib/api";
+import { useRealtimeVisible } from "@/lib/realtime";
 import type { IocDetail } from "@/lib/types";
 import { fmtDate, pct, timeAgo } from "@/lib/utils";
 import { useAuth } from "@/store/auth";
@@ -81,6 +82,7 @@ function AllowlistAction({ detail }: { detail: IocDetail }) {
 /** IOC dossier (G2). `origin` = rect of the row that opened it, so the drawer grows out of that row. */
 export function IocDrawer({ id, onClose, origin }: { id: number | null; onClose: () => void; origin?: DOMRect | null }) {
   const canEdit = useAuth((s) => s.can("analyst"));
+  const realtime = useRealtimeVisible();
   const { data, isLoading, error, refetch } = useQuery({
     queryKey: ["ioc", id],
     queryFn: () => api<IocDetail>(`/iocs/${id}`),
@@ -133,6 +135,7 @@ export function IocDrawer({ id, onClose, origin }: { id: number | null; onClose:
                   <Row label="Actors"><Chips items={ioc.actors} /></Row>
                   <Row label="MITRE ATT&CK"><Chips items={ioc.mitre_ids} mono /></Row>
                   {ioc.port != null && <Row label="Port">{ioc.port}</Row>}
+                  {(realtime || !!data.detections) && (
                   <Row label="Detections">
                     {data.detections ? (
                       <Link className="inline-flex items-center gap-1 text-primary-text hover:underline" to="/detections">
@@ -142,6 +145,7 @@ export function IocDrawer({ id, onClose, origin }: { id: number | null; onClose:
                       <span className="text-fg-subtle">none</span>
                     )}
                   </Row>
+                  )}
                 </dl>
               </TabsContent>
               <TabsContent value="sources" className="px-5 py-4">

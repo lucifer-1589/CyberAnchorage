@@ -9,10 +9,14 @@
 
 .EXAMPLE
   powershell -ExecutionPolicy Bypass -File .\scripts\run-local.ps1
-  powershell -ExecutionPolicy Bypass -File .\scripts\run-local.ps1 -Simulator    # demo detections feed
-  powershell -ExecutionPolicy Bypass -File .\scripts\run-local.ps1 -Reseed       # regenerate demo data
+  powershell -ExecutionPolicy Bypass -File .\scripts\run-local.ps1 -Demo         # add the synthetic demo dataset
+  powershell -ExecutionPolicy Bypass -File .\scripts\run-local.ps1 -Simulator    # simulated real-time detections
+
+  By default only the real Dark Web CTI data is shown: any demo data or simulated detections left in the
+  database are removed on start and the IOC store is rebuilt from the real CTI stores.
 #>
 param(
+    [switch]$Demo,
     [switch]$Simulator,
     [switch]$Reseed,
     [switch]$NoBrowser,
@@ -124,8 +128,14 @@ try {
     if ($LASTEXITCODE -ne 0) { throw "migrations failed" }
     & $Py -m anchorage.cli bootstrap
 
-    Step "Seeding demo data if the database is empty (synthetic CTI fixture + sample rules + first sync)"
-    if ($Reseed) { & $Py -m anchorage.cli seed-demo } else { & $Py -m anchorage.cli seed-demo --if-empty }
+    if ($Demo -or $Reseed) {
+        Step "Seeding demo data (synthetic CTI fixture + sample rules + first sync)"
+        if ($Reseed) { & $Py -m anchorage.cli seed-demo } else { & $Py -m anchorage.cli seed-demo --if-empty }
+    } else {
+        Step "Real CTI data only: removing any demo data and simulated detections"
+        & $Py -m anchorage.cli purge-demo --if-present
+        if ($LASTEXITCODE -ne 0) { throw "purge-demo failed" }
+    }
 
     # 6. Run ----------------------------------------------------------------------------------------
     $url = "http://127.0.0.1:$Port"

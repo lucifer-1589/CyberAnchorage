@@ -15,6 +15,7 @@ import {
 } from "lucide-react";
 import { api, post } from "@/lib/api";
 import { useLiveConnection } from "@/lib/live";
+import { useRealtimeVisible } from "@/lib/realtime";
 import { cn, fmtNum } from "@/lib/utils";
 import { EASE, DUR, useSettle, withViewTransition } from "@/lib/motion";
 import { motionOK } from "@/lib/perf";
@@ -46,6 +47,7 @@ function Brand({ collapsed }: { collapsed?: boolean }) {
 
 function NavList({ collapsed, onNavigate }: { collapsed?: boolean; onNavigate?: () => void }) {
   const can = useAuth((s) => s.can);
+  const realtime = useRealtimeVisible();
   return (
     <nav aria-label="Main" className="flex flex-col gap-4 px-2">
       {NAV.map((group) => (
@@ -53,7 +55,7 @@ function NavList({ collapsed, onNavigate }: { collapsed?: boolean; onNavigate?: 
           {!collapsed && <div className="px-2.5 pb-1.5 text-label uppercase text-fg-subtle">{group.section}</div>}
           <ul className="flex flex-col gap-0.5">
             {group.items
-              .filter((i) => !i.role || can(i.role))
+              .filter((i) => (!i.role || can(i.role)) && (!i.realtime || realtime))
               .map((item) => {
                 const link = (
                   <NavLink

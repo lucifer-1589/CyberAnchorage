@@ -62,6 +62,36 @@ async def test_cursor_filters_to_new_and_bumped_rows(tmp_path: Path) -> None:
     assert all(r.rowid > max_id or (r.last_seen_raw or "") >= max_ls for r in rows)
 
 
+async def test_wal_store_with_live_writer_is_read_without_touching_the_cti_folder(tmp_path: Path) -> None:
+    """A running CTI keeps rows in its -wal file. They must be ingested, and opening the store must not
+    create or update any file next to it (a mode=ro connection would write -shm)."""
+    root = tmp_path / "cti"
+    generate_fixture(root, count=60)
+    db = root / "darkweb_intel" / "crawler.db"
+    writer = sqlite3.connect(db)  # simulates the CTI process, kept open so its WAL is not checkpointed away
+    try:
+        writer.execute("PRAGMA journal_mode=WAL")
+        writer.execute("PRAGMA wal_autocheckpoint=0")
+        before_rows = writer.execute("SELECT count(*) FROM iocs").fetchone()[0]
+        writer.execute("INSERT INTO iocs (ioc_type, value, last_seen) VALUES ('domain', 'wal-only.example', "
+                       "'2999-01-01 00:00:00')")
+        writer.commit()
+        assert (db.parent / "crawler.db-wal").stat().st_size > 0
+        state = {p: (p.stat().st_size, p.stat().st_mtime_ns) for p in root.rglob("*")}
+
+        src = SqliteSnapshotSource(root, name="t")
+        tables = {t.store: t for t in await src.prepare()}
+        rows = await src.fetch(tables["crawler"], 0, 10_000, None)
+        health = {h.store: h for h in await src.health()}
+        await src.close()
+
+        assert any(r.raw.value == "wal-only.example" for r in rows)
+        assert health["crawler"].rows == before_rows + 1
+        assert {p: (p.stat().st_size, p.stat().st_mtime_ns) for p in root.rglob("*")} == state
+    finally:
+        writer.close()
+
+
 def test_fixture_refuses_real_cti_dir(tmp_path: Path) -> None:
     with pytest.raises(ValueError):
         generate_fixture(tmp_path / "cti" / "demo", forbid_inside=tmp_path / "cti")
