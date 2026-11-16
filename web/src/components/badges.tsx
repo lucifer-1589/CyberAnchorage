@@ -30,7 +30,7 @@ export function SeverityBadge({ severity, compact, pulse }: { severity: Severity
     >
       {pulse ? (
         <span className={cn("relative size-2 rounded-full", SEV_COLOR[severity])} aria-hidden>
-          <span className={cn("absolute -inset-1 animate-pulse-ring rounded-full", SEV_COLOR[severity])} />
+          <span className={cn("absolute -inset-1 animate-pulse-ring rounded-full opacity-0", SEV_COLOR[severity])} />
         </span>
       ) : (
         <span className="flex h-3 items-end gap-[2px]" aria-hidden>

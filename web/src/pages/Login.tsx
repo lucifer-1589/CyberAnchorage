@@ -48,10 +48,10 @@ export function LoginPage() {
       </button>
       <div className="w-full max-w-[400px]">
         <div className="mb-6 flex flex-col items-center text-center">
-          <div className="mb-4 grid size-14 place-items-center rounded-2xl bg-gradient-to-br from-primary to-secondary shadow-[0_10px_34px_rgb(var(--primary)/0.4)]">
-            <Anchor className="size-7 text-primary-fg" aria-hidden />
+          <div className="bg-brand mb-4 grid size-14 place-items-center rounded-2xl shadow-[0_10px_34px_rgb(var(--grad-2)/0.35)]">
+            <Anchor className="size-7 text-on-brand" aria-hidden />
           </div>
-          <h1 className="text-2xl font-semibold tracking-tight text-fg">CyberAnchorage</h1>
+          <h1 className="text-2xl font-bold tracking-[-0.01em] text-fg">CyberAnchorage</h1>
           <p className="mt-1 text-sm text-fg-muted">Threat detection console · Cyber Sentinel suite</p>
         </div>
         <form onSubmit={submit} className="glass rounded-2xl p-6" noValidate>
