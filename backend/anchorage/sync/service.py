@@ -342,7 +342,7 @@ class SyncService:
         async with session_scope() as s:
             res = await s.execute(update(Ioc).where(Ioc.status == "active", Ioc.expires_at < now)
                                   .values(status="expired", updated_at=now))
-            return int(res.rowcount or 0)  # type: ignore[attr-defined]
+            return int(res.rowcount or 0)
 
     async def _evaluate_rules(self) -> int:
         try:
@@ -415,7 +415,7 @@ async def fail_stale_runs() -> int:
             or_(SyncRun.heartbeat_at.is_(None), SyncRun.heartbeat_at < cutoff),
         ).values(status=SyncStatus.failed, finished_at=datetime.now(UTC),
                  errors=[{"error": "worker stopped mid-run; next run resumes from saved cursors"}]))
-        return int(res.rowcount or 0)  # type: ignore[attr-defined]
+        return int(res.rowcount or 0)
 
 
 __all__ = ["SyncService", "enqueue", "fail_stale_runs", "queue_or_run", "run_to_dict"]

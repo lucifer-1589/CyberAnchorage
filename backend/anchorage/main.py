@@ -9,7 +9,7 @@ from contextlib import asynccontextmanager
 from fastapi import APIRouter, FastAPI, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
 
-from anchorage.api import auth, users
+from anchorage.api import auth, rules, users
 from anchorage.core.config import get_settings
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
@@ -45,7 +45,7 @@ def create_app(*, with_lifespan: bool = True) -> FastAPI:
     )
 
     @app.middleware("http")
-    async def security_headers(request: Request, call_next):  # type: ignore[no-untyped-def]
+    async def security_headers(request: Request, call_next):
         response: Response = await call_next(request)
         response.headers.setdefault("X-Content-Type-Options", "nosniff")
         response.headers.setdefault("X-Frame-Options", "DENY")
@@ -59,21 +59,11 @@ def create_app(*, with_lifespan: bool = True) -> FastAPI:
     async def health() -> dict[str, str]:
         return {"status": "ok"}
 
-    for module in _routers():
+    for module in (auth, users, rules):
         api.include_router(module.router)
     app.include_router(api)
     return app
 
-
-def _routers() -> list:  # type: ignore[type-arg]
-    mods = [auth, users]
-    try:  # routers added in later milestones
-        from anchorage.api import extra_routers
-
-        mods.extend(extra_routers.ROUTERS)
-    except ImportError:
-        pass
-    return mods
 
 
 app = create_app()

@@ -41,7 +41,7 @@ class MemoryBus:
             if channel in chans:
                 q.put_nowait(msg)
 
-    async def subscribe(self, *channels: str) -> AsyncIterator[dict[str, Any]]:  # type: ignore[override]
+    async def subscribe(self, *channels: str) -> AsyncIterator[dict[str, Any]]:
         q: asyncio.Queue[dict[str, Any]] = asyncio.Queue(maxsize=1000)
         entry = (set(channels), q)
         self._subs.append(entry)
@@ -67,7 +67,7 @@ class RedisBus:
         except Exception as exc:  # bus failures must never break a sync/rule save
             log.warning("bus publish failed: %s", exc)
 
-    async def subscribe(self, *channels: str) -> AsyncIterator[dict[str, Any]]:  # type: ignore[override]
+    async def subscribe(self, *channels: str) -> AsyncIterator[dict[str, Any]]:
         while True:
             pubsub = self._redis.pubsub()
             try:

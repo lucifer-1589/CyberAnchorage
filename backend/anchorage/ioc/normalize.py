@@ -259,15 +259,27 @@ def _norm_md5ish(t: str) -> Callable[[str, bool], Normalized]:
 
 Normalizer = Callable[[str, bool], Normalized]
 
+def _norm_ipv4(v: str, p: bool = False) -> Normalized:
+    return norm_ip(v, p, want=4)
+
+
+def _norm_ipv6(v: str, p: bool = False) -> Normalized:
+    return norm_ip(v, p, want=6)
+
+
+def _norm_onion_t(v: str, p: bool = False) -> Normalized:
+    return norm_onion(v)
+
+
 TYPE_REGISTRY: dict[str, Normalizer] = {
-    "ipv4": lambda v, p=False: norm_ip(v, p, want=4),
-    "ipv6": lambda v, p=False: norm_ip(v, p, want=6),
+    "ipv4": _norm_ipv4,
+    "ipv6": _norm_ipv6,
     "ip": norm_ip,  # generic, resolves to ipv4/ipv6
     "cidr": norm_cidr,
     "domain": norm_domain,
     "url": norm_url,
     "ip:port": norm_ip_port,
-    "onion": lambda v, p=False: norm_onion(v),
+    "onion": _norm_onion_t,
     "asn": norm_asn,
     "ja3": _norm_md5ish("ja3"),
     "ja3s": _norm_md5ish("ja3s"),
