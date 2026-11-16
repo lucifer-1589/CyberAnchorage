@@ -276,7 +276,7 @@ export function Stat({
         <span className="truncate text-label uppercase text-fg-subtle">{label}</span>
         {Icon && <Icon className={cn("size-4 shrink-0", toneCls)} />}
       </div>
-      <div className="mt-1.5 flex min-w-0 items-end justify-between gap-3">
+      <div className="mt-1.5 min-w-0">
         <div className="min-w-0">
           {loading ? (
             <Skeleton className="mt-1 h-7 w-24" />
@@ -291,22 +291,18 @@ export function Stat({
             <p className="m-0 truncate text-[22px] font-semibold leading-8 tracking-[-0.01em] text-fg">{value}</p>
           )}
           {dir && !loading ? (
-            <span className={cn("mt-0.5 inline-flex items-center gap-1 text-xs font-semibold tabular-nums", good === null ? "text-fg-subtle" : good ? "text-primary-text" : "text-danger-text")}>
+            <span className={cn("mt-0.5 flex min-w-0 items-center gap-1 whitespace-nowrap text-xs font-semibold tabular-nums", good === null ? "text-fg-subtle" : good ? "text-primary-text" : "text-danger-text")}>
               {dir === "down" ? <TrendingDown className="size-3.5" aria-hidden /> : <TrendingUp className="size-3.5" aria-hidden />}
               {delta! > 0 ? "+" : ""}
               {pct(delta!)}
-              {hint && <span className="ml-1 truncate font-medium text-fg-subtle">{hint}</span>}
+              {hint && <span className="ml-1 min-w-0 truncate font-medium text-fg-subtle">{hint}</span>}
             </span>
           ) : (
             hint && <span className="mt-0.5 block truncate text-xs text-fg-subtle">{hint}</span>
           )}
         </div>
-        {spark && !loading && (
-          <div className="w-[38%] min-w-[56px] max-w-[132px] shrink">
-            <Sparkline data={spark} label={`${label} trend`} />
-          </div>
-        )}
       </div>
+      {spark && !loading && <Sparkline data={spark} label={`${label} trend`} className="mt-2 h-7" />}
     </Comp>
   );
 }
