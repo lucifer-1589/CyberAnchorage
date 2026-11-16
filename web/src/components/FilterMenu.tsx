@@ -23,7 +23,7 @@ export function FilterMenu({
         <button
           className={cn(
             "inline-flex h-9 items-center gap-1.5 rounded-lg border px-3 text-[13px] font-medium transition-colors",
-            active ? "border-primary/50 bg-primary/12 text-fg" : "border-line text-fg-muted hover:text-fg",
+            active ? "border-primary/50 bg-primary/[.12] text-fg" : "border-line text-fg-muted hover:text-fg",
           )}
         >
           {label}

@@ -8,6 +8,8 @@
     <title>CyberAnchorage</title>
     <script>
       try { var t = localStorage.getItem("ca-theme"); if (t === "light" || t === "dark") document.documentElement.dataset.theme = t; } catch (e) {}
+      // Start the session refresh while the JS downloads; refreshSession() consumes this response once.
+      window.__caRefresh = fetch("/api/auth/refresh", { method: "POST", credentials: "same-origin" }).catch(function () { return null; });
     </script>
   </head>
   <body>

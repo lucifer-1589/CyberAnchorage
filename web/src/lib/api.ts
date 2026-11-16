@@ -22,12 +22,20 @@ export function qs(params?: Query): string {
 
 let refreshing: Promise<boolean> | null = null;
 
+/** index.html starts the first refresh request before the bundle loads (saves one round trip on boot). */
+function takeEarlyRefresh(): Promise<Response | null> | null {
+  const w = window as Window & { __caRefresh?: Promise<Response | null> };
+  const early = w.__caRefresh ?? null;
+  delete w.__caRefresh;
+  return early;
+}
+
 /** Exchange the HttpOnly refresh cookie for a new access token (single-flight). */
 export async function refreshSession(): Promise<boolean> {
   if (!refreshing) {
     refreshing = (async () => {
       try {
-        const r = await fetch("/api/auth/refresh", { method: "POST", credentials: "same-origin" });
+        const r = (await takeEarlyRefresh()) ?? (await fetch("/api/auth/refresh", { method: "POST", credentials: "same-origin" }));
         if (!r.ok) return false;
         const data = await r.json();
         useAuth.getState().setSession(data.access_token, data.user);

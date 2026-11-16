@@ -5,6 +5,7 @@ import { AlertOctagon, BarChart3, CalendarClock, Database, ListChecks, Radar, Sp
 import { api } from "@/lib/api";
 import type { Facet } from "@/lib/types";
 import { cn, duration, fmtDate, fmtNum, timeAgo, TYPE_LABELS } from "@/lib/utils";
+import { enterStyle } from "@/lib/motion";
 import { PageHeader } from "@/components/AppShell";
 import { Chart, type ChartTheme } from "@/components/Chart";
 import { StatusPill } from "@/components/badges";
@@ -29,6 +30,9 @@ interface Overview {
 }
 
 const SEV_ORDER = ["low", "medium", "high", "critical"];
+
+/** Today vs yesterday from a daily series (undefined when there is nothing to compare). */
+const dayDelta = (xs?: number[]) => (xs && xs.length > 1 && xs[xs.length - 2] ? xs[xs.length - 1] / xs[xs.length - 2] - 1 : undefined);
 const VER_ORDER = ["abnormal", "suspicious", "malicious"];
 
 /** Panel that can flip between the chart and an accessible table of the same rows. */
@@ -40,7 +44,9 @@ function ChartPanel({
   children,
   className,
   loading,
+  enter = 0,
 }: {
+  enter?: number;
   title: string;
   subtitle?: string;
   rows: { key: string; count: number }[];
@@ -50,8 +56,9 @@ function ChartPanel({
   loading?: boolean;
 }) {
   const [table, setTable] = useState(false);
+  const e = enterStyle(enter);
   return (
-    <Panel className={cn("flex flex-col", className)}>
+    <Panel className={cn("flex flex-col", e.className, className)} style={e.style}>
       <PanelHeader
         title={title}
         subtitle={subtitle}
@@ -128,29 +135,37 @@ export default function OverviewPage() {
   const sevs = sortBy(data?.by_severity, SEV_ORDER);
   const jobs = data?.sync.worker?.jobs ?? {};
   const last = data?.sync.last_run;
+  const ingested = data?.timeline.slice(-14).map((d) => d.ingested) ?? [];
+  const flagged = data?.timeline.slice(-14).map((d) => d.flagged) ?? [];
 
   return (
     <div>
       <PageHeader title="Overview" description="Network IOCs from the Dark Web CTI, how they are flagged, and how fresh the intake is." />
 
-      <section aria-label="Key figures" className="mb-4 grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-6">
-        <Stat label="Active IOCs" value={fmtNum(t.active)} hint={`${fmtNum(t.all)} total incl. expired`} icon={Database} tone="primary" loading={isLoading} onClick={() => navigate("/iocs")} />
-        <Stat label="New in 24 h" value={fmtNum(t.new_24h)} hint="first ingested today" icon={Sparkles} tone="primary" loading={isLoading} onClick={() => navigate("/iocs?new=24")} />
-        <Stat label="Flagged" value={fmtNum(t.flagged)} hint={`${fmtNum(t.allowlisted)} allowlisted`} icon={AlertOctagon} tone="danger" loading={isLoading} onClick={() => navigate("/flags")} />
-        <Stat label="Enabled rules" value={fmtNum(t.rules_enabled)} icon={ListChecks} loading={isLoading} onClick={() => navigate("/rules")} />
-        <Stat label="Detections 24 h" value={fmtNum(t.detections_24h)} hint="real-time seam" icon={Radar} tone="warning" loading={isLoading} onClick={() => navigate("/detections")} />
+      <Panel
+        tier="g1"
+        role="region"
+        aria-label="Key figures"
+        className="mb-4 grid grid-cols-2 gap-px overflow-hidden p-1 md:grid-cols-3 xl:grid-cols-6 [&>*]:rounded-xl"
+      >
+        <Stat label="Active IOCs" value={t.active ?? 0} hint={`${fmtNum(t.all)} incl. expired`} icon={Database} tone="primary" loading={isLoading} spark={ingested} onClick={() => navigate("/iocs")} />
+        <Stat label="New in 24 h" value={t.new_24h ?? 0} delta={dayDelta(ingested)} hint="vs yesterday" icon={Sparkles} tone="primary" loading={isLoading} onClick={() => navigate("/iocs?new=24")} />
+        <Stat label="Flagged" value={t.flagged ?? 0} delta={dayDelta(flagged)} goodWhen="down" hint="vs yesterday" icon={AlertOctagon} tone="danger" spark={flagged} loading={isLoading} onClick={() => navigate("/flags")} />
+        <Stat label="Enabled rules" value={t.rules_enabled ?? 0} hint={`${fmtNum(t.allowlisted)} allowlisted IOCs`} icon={ListChecks} loading={isLoading} onClick={() => navigate("/rules")} />
+        <Stat label="Detections 24 h" value={t.detections_24h ?? 0} hint="real-time seam" icon={Radar} tone="warning" loading={isLoading} onClick={() => navigate("/detections")} />
         <Stat
           label="Last sync"
-          value={<span className="text-lg">{last ? timeAgo(last.finished_at ?? last.started_at) : "never"}</span>}
+          value={last ? timeAgo(last.finished_at ?? last.started_at) : "never"}
           hint={last ? `${last.kind} · ${last.status}` : "no runs yet"}
           icon={CalendarClock}
           loading={isLoading}
           onClick={() => navigate("/sync")}
         />
-      </section>
+      </Panel>
 
       <div className="grid grid-cols-1 gap-4 xl:grid-cols-3">
-        <Panel className="xl:col-span-2">
+        {/* charts repaint on every pointer move (axis pointer, tooltip): they live on G0, never inside blur */}
+        <Panel className={cn("xl:col-span-2", enterStyle(0).className)} style={enterStyle(0).style}>
           <PanelHeader title="Ingestion timeline" subtitle="IOCs first ingested vs. flags raised per day · last 30 days" />
           <div className="px-3 pb-3">
             {isLoading ? (
@@ -175,8 +190,8 @@ export default function OverviewPage() {
                   },
                   yAxis: { type: "value", splitLine: { lineStyle: { color: c.grid } }, axisLabel: { color: c.muted, fontSize: 11 } },
                   series: [
-                    { name: "Ingested", type: "line", smooth: 0.25, symbol: "circle", symbolSize: 8, showSymbol: false, lineStyle: { width: 2 }, areaStyle: { opacity: 0.08 }, data: data!.timeline.map((d) => d.ingested) },
-                    { name: "Flagged", type: "line", smooth: 0.25, symbol: "circle", symbolSize: 8, showSymbol: false, lineStyle: { width: 2 }, data: data!.timeline.map((d) => d.flagged) },
+                    { name: "Ingested", type: "line", smooth: 0.25, symbol: "circle", symbolSize: 8, showSymbol: false, itemStyle: { color: c.s1 }, lineStyle: { width: 2.5, color: c.brand() }, areaStyle: { opacity: 0.1, color: c.s1 }, data: data!.timeline.map((d) => d.ingested) },
+                    { name: "Flagged", type: "line", smooth: 0.25, symbol: "circle", symbolSize: 8, showSymbol: false, itemStyle: { color: c.s2 }, lineStyle: { width: 2, color: c.s2 }, data: data!.timeline.map((d) => d.flagged) },
                   ],
                 })}
               />
@@ -184,7 +199,7 @@ export default function OverviewPage() {
           </div>
         </Panel>
 
-        <Panel>
+        <Panel className={enterStyle(1).className} style={enterStyle(1).style}>
           <PanelHeader
             title="Sync health"
             subtitle="Hourly incremental · daily 07:00 UTC full reconcile"
@@ -222,7 +237,7 @@ export default function OverviewPage() {
                 {!Object.keys(jobs).length && <p className="rounded-lg border border-highlight/40 bg-highlight/10 px-3 py-2 text-[12.5px] text-highlight-ink">Worker has not reported in yet — scheduled runs are not visible.</p>}
                 <div className="pt-1">
                   <div className="mb-1.5 text-xs text-fg-subtle">Recent runs</div>
-                  <div className="flex gap-1" aria-label="Recent run outcomes">
+                  <div role="group" className="flex gap-1" aria-label="Recent run outcomes">
                     {(data?.sync.recent ?? []).slice().reverse().map((r) => (
                       <Tip key={r.id} content={`#${r.id} ${r.kind} · ${r.status} · ${r.new} new / ${r.updated} updated`}>
                         <span
@@ -240,7 +255,7 @@ export default function OverviewPage() {
           </div>
         </Panel>
 
-        <ChartPanel loading={isLoading} title="IOCs by type" subtitle="Active IOCs" rows={data?.by_type ?? []} label={(k) => TYPE_LABELS[k] ?? k}>
+        <ChartPanel enter={2} loading={isLoading} title="IOCs by type" subtitle="Active IOCs" rows={data?.by_type ?? []} label={(k) => TYPE_LABELS[k] ?? k}>
           <Chart
             height={Math.max(160, (data?.by_type.length ?? 0) * 30)}
             ariaLabel="Bar chart of active IOCs by type"
@@ -250,7 +265,7 @@ export default function OverviewPage() {
           />
         </ChartPanel>
 
-        <ChartPanel loading={isLoading} title="IOCs by source" subtitle="An IOC counts once per source it was seen in" rows={data?.by_source ?? []}>
+        <ChartPanel enter={3} loading={isLoading} title="IOCs by source" subtitle="An IOC counts once per source it was seen in" rows={data?.by_source ?? []}>
           <Chart
             height={Math.max(160, (data?.by_source.length ?? 0) * 30)}
             ariaLabel="Bar chart of active IOCs by CTI source"
@@ -261,7 +276,7 @@ export default function OverviewPage() {
         </ChartPanel>
 
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-1">
-          <ChartPanel loading={isLoading} title="Flagged by verdict" rows={verdicts} label={(k) => k[0].toUpperCase() + k.slice(1)}>
+          <ChartPanel enter={4} loading={isLoading} title="Flagged by verdict" rows={verdicts} label={(k) => k[0].toUpperCase() + k.slice(1)}>
             <Chart
               height={120}
               ariaLabel="Bar chart of flagged IOCs by verdict"
@@ -270,7 +285,7 @@ export default function OverviewPage() {
               onClick={(p) => navigate(`/flags?verdict=${p.name}`)}
             />
           </ChartPanel>
-          <ChartPanel loading={isLoading} title="Flagged by severity" rows={sevs} label={(k) => k[0].toUpperCase() + k.slice(1)}>
+          <ChartPanel enter={5} loading={isLoading} title="Flagged by severity" rows={sevs} label={(k) => k[0].toUpperCase() + k.slice(1)}>
             <Chart
               height={150}
               ariaLabel="Bar chart of flagged IOCs by severity"
@@ -281,7 +296,7 @@ export default function OverviewPage() {
           </ChartPanel>
         </div>
 
-        <Panel className="xl:col-span-3">
+        <Panel className={cn("xl:col-span-3", enterStyle(6).className)} style={enterStyle(6).style}>
           <PanelHeader title="Attribution" subtitle="Most frequent malware families and threat actors across active IOCs" />
           <div className="grid grid-cols-1 gap-6 px-5 pb-5 pt-3 md:grid-cols-2">
             {(
@@ -291,7 +306,7 @@ export default function OverviewPage() {
               ] as const
             ).map(([title, rows, param]) => (
               <div key={title}>
-                <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-fg-subtle">{title}</h3>
+                <h3 className="mb-2 text-label uppercase text-fg-subtle">{title}</h3>
                 {rows.length === 0 ? (
                   <p className="text-sm text-fg-muted">No attribution yet.</p>
                 ) : (
@@ -303,7 +318,7 @@ export default function OverviewPage() {
                           <button className="group flex w-full items-center gap-3 text-left" onClick={() => navigate(`/iocs?${param}=${encodeURIComponent(r.key)}`)}>
                             <span className="w-36 truncate text-sm text-fg group-hover:text-primary-text">{r.key}</span>
                             <span className="h-2 flex-1 overflow-hidden rounded-full bg-[rgb(var(--hover)/0.08)]">
-                              <span className="block h-full rounded-full bg-secondary" style={{ width: `${(r.count / max) * 100}%` }} />
+                              <span className="block h-full origin-left rounded-full bg-violet" style={{ transform: `scaleX(${r.count / max})` }} />
                             </span>
                             <span className="w-12 text-right text-xs tabular-nums text-fg-muted">{fmtNum(r.count)}</span>
                           </button>

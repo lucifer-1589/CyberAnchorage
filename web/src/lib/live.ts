@@ -3,6 +3,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { useAuth } from "@/store/auth";
 import { useUi } from "@/store/ui";
+import { createBatcher } from "@/lib/motion";
 
 export interface LiveEvent {
   type: string;
@@ -53,43 +54,56 @@ export function useLiveConnection() {
         }
         if (ev.type === "ping") return;
         listeners.forEach((l) => l(ev));
-        handle(ev);
+        batch.push(ev);
       };
     };
 
-    const handle = (ev: LiveEvent) => {
-      switch (ev.type) {
-        case "sync.queued":
-        case "sync.started":
-          qc.invalidateQueries({ queryKey: ["sync"] });
-          if (ev.type === "sync.started") toast.info(`Sync #${ev.data.run_id} started (${ev.data.mode})`);
-          break;
-        case "sync.progress":
-          qc.setQueryData(["sync", "progress"], ev.data);
-          break;
-        case "sync.finished":
-          qc.invalidateQueries();
-          toast.success(`Sync #${ev.data.id} ${ev.data.status}: ${ev.data.new} new, ${ev.data.updated} updated`);
-          break;
-        case "flags.updated":
-          qc.invalidateQueries({ queryKey: ["flags"] });
-          qc.invalidateQueries({ queryKey: ["iocs"] });
-          qc.invalidateQueries({ queryKey: ["overview"] });
-          if (ev.data.new_flags > 0) toast.warning(`${ev.data.new_flags} new flag${ev.data.new_flags > 1 ? "s" : ""}`);
-          break;
-        case "detection.created":
-          qc.invalidateQueries({ queryKey: ["detections"] });
-          break;
-        case "rule.changed":
-          qc.invalidateQueries({ queryKey: ["rules"] });
-          break;
+    /** Events are batched (one flush per frame, ≥ 250 ms apart) before touching React Query:
+     *  duplicate invalidations collapse into one and flag toasts are summed. */
+    const flush = (events: LiveEvent[]) => {
+      const keys = new Map<string, unknown[]>();
+      const invalidate = (k: unknown[]) => keys.set(JSON.stringify(k), k);
+      let newFlags = 0;
+      let invalidateAll = false;
+      for (const ev of events) {
+        switch (ev.type) {
+          case "sync.queued":
+          case "sync.started":
+            invalidate(["sync"]);
+            if (ev.type === "sync.started") toast.info(`Sync #${ev.data.run_id} started (${ev.data.mode})`);
+            break;
+          case "sync.progress":
+            qc.setQueryData(["sync", "progress"], ev.data);
+            break;
+          case "sync.finished":
+            invalidateAll = true;
+            toast.success(`Sync #${ev.data.id} ${ev.data.status}: ${ev.data.new} new, ${ev.data.updated} updated`);
+            break;
+          case "flags.updated":
+            invalidate(["flags"]);
+            invalidate(["iocs"]);
+            invalidate(["overview"]);
+            newFlags += Number(ev.data.new_flags) || 0;
+            break;
+          case "detection.created":
+            invalidate(["detections"]);
+            break;
+          case "rule.changed":
+            invalidate(["rules"]);
+            break;
+        }
       }
+      if (invalidateAll) qc.invalidateQueries();
+      else keys.forEach((k) => qc.invalidateQueries({ queryKey: k }));
+      if (newFlags > 0) toast.warning(`${newFlags} new flag${newFlags > 1 ? "s" : ""}`);
     };
+    const batch = createBatcher<LiveEvent>(flush, 250);
 
     connect();
     return () => {
       stopped = true;
       window.clearTimeout(timer);
+      batch.cancel();
       ws?.close();
       setLive(false);
     };

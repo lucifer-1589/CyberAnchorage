@@ -85,10 +85,12 @@ enable/disable, version history + restore) · Flags · Allowlist (impact preview
 (store health, worker + next runs, live progress, Sync now, run history) · Detections · Audit Log ·
 Users · Settings. Ctrl+K opens the command palette.
 
-**Design:** glassmorphism tuned for readability — frosted panels stay ≥ 60 % opaque over a calm gradient
-backdrop, every text colour is ≥ 4.5:1 against the glass (body text ~14:1), dark default with a light theme,
-Cyber Sentinel palette (#34A99D / #458393 / #E5CB90). Severity and verdict always combine colour with an
-icon, a text label and a level glyph; chart colours were validated for colour-vision deficiency.
+**Design:** the "Royal Glass" system (`web/UI-SYSTEM.md`). It uses a midnight canvas with three glass tiers
+(solid for data, frosted panels, one floating overlay), teal, royal violet and a sparing gold, Royal Midnight
+(dark, default) and Ivory Pearl (light) themes, and Instrument Sans + JetBrains Mono. Text contrast is
+checked on the real composited glass (`npm run check:contrast`). Severity and verdict always combine colour
+with an icon, a text label and a level glyph, and chart colours are validated for colour-vision deficiency.
+Settings › Visual effects (Auto/Full/Reduced/Off) adapts blur and motion to the device.
 
 ## Stubbed / out of scope in Level 1
 

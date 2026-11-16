@@ -78,7 +78,8 @@ function AllowlistAction({ detail }: { detail: IocDetail }) {
   );
 }
 
-export function IocDrawer({ id, onClose }: { id: number | null; onClose: () => void }) {
+/** IOC dossier (G2). `origin` = rect of the row that opened it, so the drawer grows out of that row. */
+export function IocDrawer({ id, onClose, origin }: { id: number | null; onClose: () => void; origin?: DOMRect | null }) {
   const canEdit = useAuth((s) => s.can("analyst"));
   const { data, isLoading, error, refetch } = useQuery({
     queryKey: ["ioc", id],
@@ -89,7 +90,7 @@ export function IocDrawer({ id, onClose }: { id: number | null; onClose: () => v
 
   return (
     <Sheet open={id !== null} onOpenChange={(o) => !o && onClose()}>
-      <SheetContent wide title={ioc ? <IocValue id={ioc.id} value={ioc.value} /> : "IOC"} description={ioc ? `${ioc.type} · seen in ${ioc.source_count} source${ioc.source_count === 1 ? "" : "s"}` : undefined}>
+      <SheetContent wide origin={origin} title={ioc ? <IocValue id={ioc.id} value={ioc.value} /> : "IOC"} description={ioc ? `${ioc.type} · seen in ${ioc.source_count} source${ioc.source_count === 1 ? "" : "s"}` : undefined}>
         {isLoading && (
           <div className="space-y-3 p-5">
             <Skeleton className="h-6 w-48" />
