@@ -86,6 +86,9 @@ def test_refang_defang_roundtrip() -> None:
     assert defang("https://evil.com/x", "url") == "hxxps://evil[.]com/x"
     assert defang("1.2.3.4", "ipv4") == "1[.]2[.]3[.]4"
     assert defang("AS13335", "asn") == "AS13335"
+    # idempotent: re-validating an already-defanged response must not produce "[[.]]"
+    once = defang("https://a.b.evil.com/x.php", "url")
+    assert defang(once, "url") == once == "hxxps://a[.]b[.]evil[.]com/x[.]php"
 
 
 def test_guess() -> None:

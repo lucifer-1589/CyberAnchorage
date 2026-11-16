@@ -206,10 +206,10 @@ export default function RuleEditorPage() {
         }
       />
 
-      <div className="grid grid-cols-1 gap-4 2xl:grid-cols-[minmax(0,1fr)_440px]">
+      <div className="grid grid-cols-1 gap-4 xl:grid-cols-[minmax(0,1fr)_380px] 2xl:grid-cols-[minmax(0,1fr)_440px]">
         <div className="space-y-4">
           <Panel className="p-5">
-            <fieldset disabled={!canEdit} className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
+            <fieldset disabled={!canEdit} className="grid grid-cols-1 gap-4 md:grid-cols-2 2xl:grid-cols-4">
               <div className="md:col-span-2">
                 <Label htmlFor="r-name">Name</Label>
                 <Input id="r-name" value={draft.name} onChange={(e) => set({ name: e.target.value })} placeholder="e.g. Ransomware C2 infrastructure" maxLength={160} />
@@ -282,7 +282,7 @@ export default function RuleEditorPage() {
           </Panel>
         </div>
 
-        <Panel className="2xl:sticky 2xl:top-20 2xl:self-start">
+        <Panel className="xl:sticky xl:top-20 xl:self-start">
           <PanelHeader
             title={
               <span className="flex items-center gap-2">

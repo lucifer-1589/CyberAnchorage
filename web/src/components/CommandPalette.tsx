@@ -40,6 +40,10 @@ export function CommandPalette() {
     staleTime: 10_000,
   });
 
+  const pages = NAV.flatMap((g) => g.items).filter(
+    (i) => (!i.role || can(i.role)) && (!q || i.label.toLowerCase().includes(q.toLowerCase())),
+  );
+
   const go = (to: string) => {
     setPalette(false);
     setQ("");
@@ -89,16 +93,16 @@ export function CommandPalette() {
                   ))}
                 </Command.Group>
               ) : null}
-              <Command.Group heading="Pages" className={groupCls}>
-                {NAV.flatMap((g) => g.items)
-                  .filter((i) => (!i.role || can(i.role)) && (!q || i.label.toLowerCase().includes(q.toLowerCase())))
-                  .map((i) => (
+              {pages.length > 0 && (
+                <Command.Group heading="Pages" className={groupCls}>
+                  {pages.map((i) => (
                     <Command.Item key={i.to} value={`page-${i.to}`} onSelect={() => go(i.to)} className={itemCls}>
                       <i.icon />
                       {i.label}
                     </Command.Item>
                   ))}
-              </Command.Group>
+                </Command.Group>
+              )}
               <Command.Group heading="Actions" className={groupCls}>
                 <Command.Item value="act-theme" onSelect={() => (toggleTheme(), setPalette(false))} className={itemCls}>
                   <Moon /> Toggle light / dark theme

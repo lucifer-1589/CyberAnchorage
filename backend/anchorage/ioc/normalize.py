@@ -66,7 +66,8 @@ def defang(value: str, ioc_type: str) -> str:
         return value
     v = re.sub(r"(?i)^http", "hxxp", value)
     v = re.sub(r"(?i)^ftp", "fxp", v)
-    return v.replace(".", "[.]")
+    # idempotent: dots that are already bracketed stay as they are
+    return re.sub(r"(?<!\[)\.(?!\])", "[.]", v)
 
 
 # ------------------------------------------------------------ IP helpers ---

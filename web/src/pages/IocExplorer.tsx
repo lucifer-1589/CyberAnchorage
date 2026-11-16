@@ -20,6 +20,20 @@ const MULTI = ["type", "verdict", "severity", "source", "tag", "tlp"] as const;
 const SINGLE = ["q", "status", "min_score", "malware", "actor", "new_within_hours", "demo"] as const;
 const PAGE = 100;
 const ROW_H = 46;
+const CARD_H = 92; // phone layout: stacked card rows
+
+function useIsWide(query = "(min-width: 768px)") {
+  const get = () => (typeof window !== "undefined" && window.matchMedia ? window.matchMedia(query).matches : true);
+  const [wide, setWide] = useState(get);
+  useEffect(() => {
+    if (!window.matchMedia) return;
+    const mq = window.matchMedia(query);
+    const on = () => setWide(mq.matches);
+    mq.addEventListener("change", on);
+    return () => mq.removeEventListener("change", on);
+  }, [query]);
+  return wide;
+}
 
 type Filters = Record<string, string | string[]>;
 
@@ -173,7 +187,10 @@ export default function IocExplorerPage() {
   });
 
   const scrollRef = useRef<HTMLDivElement>(null);
-  const virt = useVirtualizer({ count: rows.length, getScrollElement: () => scrollRef.current, estimateSize: () => ROW_H, overscan: 12 });
+  const wide = useIsWide();
+  const rowH = wide ? ROW_H : CARD_H;
+  const virt = useVirtualizer({ count: rows.length, getScrollElement: () => scrollRef.current, estimateSize: () => rowH, overscan: 12 });
+  useEffect(() => virt.measure(), [rowH, virt]);
   const items = virt.getVirtualItems();
   useEffect(() => {
     const lastItem = items[items.length - 1];
@@ -242,8 +259,8 @@ export default function IocExplorerPage() {
           <ErrorState error={list.error} onRetry={() => list.refetch()} />
         ) : (
           <div ref={scrollRef} className="min-h-0 flex-1 overflow-auto" role="table" aria-label="IOCs" aria-rowcount={total}>
-            <div className="min-w-[980px]">
-              <div role="rowgroup" className="sticky top-0 z-10 border-b border-line bg-[rgb(var(--glass-strong)/0.92)] backdrop-blur">
+            <div className={wide ? "min-w-[980px]" : ""}>
+              <div role="rowgroup" className={cn(!wide && "sr-only", "sticky top-0 z-10 border-b border-line bg-[rgb(var(--glass-strong)/0.92)] backdrop-blur")}>
                 {table.getHeaderGroups().map((hg) => (
                   <div role="row" key={hg.id} className={cn("grid px-3", gridCols)}>
                     {hg.headers.map((h) => {
@@ -282,6 +299,34 @@ export default function IocExplorerPage() {
                 <div role="rowgroup" style={{ height: virt.getTotalSize(), position: "relative" }}>
                   {items.map((vi) => {
                     const row = table.getRowModel().rows[vi.index];
+                    const i = row.original;
+                    if (!wide)
+                      return (
+                        <div
+                          role="row"
+                          key={row.id}
+                          tabIndex={0}
+                          onClick={() => update({ open: String(i.id) })}
+                          onKeyDown={(e) => e.key === "Enter" && update({ open: String(i.id) })}
+                          className={cn("row-hover absolute left-0 flex w-full cursor-pointer flex-col justify-center gap-1.5 border-b border-line px-4", openId === i.id && "bg-primary/10")}
+                          style={{ height: CARD_H, transform: `translateY(${vi.start}px)` }}
+                        >
+                          <div role="cell" className="flex items-center gap-1.5">
+                            <VerdictBadge verdict={i.verdict} allowlisted={i.allowlisted} />
+                            {i.severity && <SeverityBadge severity={i.severity} compact />}
+                            <TypeBadge type={i.type} />
+                            {i.is_demo && <DemoBadge />}
+                            <span className="ml-auto text-[11.5px] text-fg-subtle">{timeAgo(i.last_seen)}</span>
+                          </div>
+                          <div role="cell" className="min-w-0">
+                            <IocValue id={i.id} value={i.value} />
+                          </div>
+                          <div role="cell" className="flex items-center gap-2 text-[11.5px] text-fg-muted">
+                            <span className="truncate">{i.sources.join(", ")}</span>
+                            <span className="ml-auto shrink-0 tabular-nums">score {Math.round(i.score * 100)}</span>
+                          </div>
+                        </div>
+                      );
                     return (
                       <div
                         role="row"

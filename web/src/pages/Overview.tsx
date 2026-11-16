@@ -39,6 +39,7 @@ function ChartPanel({
   label = (k) => k,
   children,
   className,
+  loading,
 }: {
   title: string;
   subtitle?: string;
@@ -46,6 +47,7 @@ function ChartPanel({
   label?: (k: string) => string;
   children: React.ReactNode;
   className?: string;
+  loading?: boolean;
 }) {
   const [table, setTable] = useState(false);
   return (
@@ -62,7 +64,9 @@ function ChartPanel({
         }
       />
       <div className="flex-1 px-3 pb-3 pt-1">
-        {rows.length === 0 ? (
+        {loading ? (
+          <Skeleton className="m-2 h-36" />
+        ) : rows.reduce((n, r) => n + r.count, 0) === 0 ? (
           <EmptyState title="No data yet" description="Run a sync or seed the demo data." className="py-8" />
         ) : table ? (
           <table className="m-2 w-[calc(100%-1rem)] text-sm">
@@ -236,7 +240,7 @@ export default function OverviewPage() {
           </div>
         </Panel>
 
-        <ChartPanel title="IOCs by type" subtitle="Active IOCs" rows={data?.by_type ?? []} label={(k) => TYPE_LABELS[k] ?? k}>
+        <ChartPanel loading={isLoading} title="IOCs by type" subtitle="Active IOCs" rows={data?.by_type ?? []} label={(k) => TYPE_LABELS[k] ?? k}>
           <Chart
             height={Math.max(160, (data?.by_type.length ?? 0) * 30)}
             ariaLabel="Bar chart of active IOCs by type"
@@ -246,7 +250,7 @@ export default function OverviewPage() {
           />
         </ChartPanel>
 
-        <ChartPanel title="IOCs by source" subtitle="An IOC counts once per source it was seen in" rows={data?.by_source ?? []}>
+        <ChartPanel loading={isLoading} title="IOCs by source" subtitle="An IOC counts once per source it was seen in" rows={data?.by_source ?? []}>
           <Chart
             height={Math.max(160, (data?.by_source.length ?? 0) * 30)}
             ariaLabel="Bar chart of active IOCs by CTI source"
@@ -257,7 +261,7 @@ export default function OverviewPage() {
         </ChartPanel>
 
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-1">
-          <ChartPanel title="Flagged by verdict" rows={verdicts} label={(k) => k[0].toUpperCase() + k.slice(1)}>
+          <ChartPanel loading={isLoading} title="Flagged by verdict" rows={verdicts} label={(k) => k[0].toUpperCase() + k.slice(1)}>
             <Chart
               height={120}
               ariaLabel="Bar chart of flagged IOCs by verdict"
@@ -266,7 +270,7 @@ export default function OverviewPage() {
               onClick={(p) => navigate(`/flags?verdict=${p.name}`)}
             />
           </ChartPanel>
-          <ChartPanel title="Flagged by severity" rows={sevs} label={(k) => k[0].toUpperCase() + k.slice(1)}>
+          <ChartPanel loading={isLoading} title="Flagged by severity" rows={sevs} label={(k) => k[0].toUpperCase() + k.slice(1)}>
             <Chart
               height={150}
               ariaLabel="Bar chart of flagged IOCs by severity"

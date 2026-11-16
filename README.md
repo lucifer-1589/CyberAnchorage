@@ -39,7 +39,7 @@ make dev-web                    # Vite on 127.0.0.1:5173, proxies /api
 ## Tests & lint
 
 ```bash
-make test        # pytest (174) + vitest (7)
+make test        # pytest (175) + vitest (7)
 make lint        # ruff, mypy, eslint, tsc
 ```
 

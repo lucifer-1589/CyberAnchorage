@@ -159,3 +159,15 @@ def test_websocket_rejects_bad_token() -> None:
             assert exc.code == 4401
         else:
             raise AssertionError("bad token accepted")
+
+
+async def test_nested_ioc_values_defanged_exactly_once(client: AsyncClient, auth_headers: dict[str, dict[str, str]],
+                                                       tmp_path: Path) -> None:
+    await _load(tmp_path)
+    v = auth_headers["viewer"]
+    first = (await client.get("/api/iocs", params={"type": "ipv4", "limit": 1}, headers=v)).json()["items"][0]
+    detail = (await client.get(f"/api/iocs/{first['id']}", headers=v)).json()
+    assert detail["ioc"]["value"] == first["value"] and "[[" not in detail["ioc"]["value"]
+    dry = (await client.post("/api/rules/dry-run", json={"condition": {"field": "type", "operator": "eq",
+                                                                        "value": "ipv4"}}, headers=v)).json()
+    assert all("[[" not in s["value"] for s in dry["samples"])
